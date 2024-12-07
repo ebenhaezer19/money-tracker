@@ -1,5 +1,12 @@
 import { defineStore } from 'pinia'
-import axios from 'axios'
+// Hapus import axios karena tidak digunakan untuk sementara
+// import axios from 'axios'
+
+// Hardcoded credentials untuk testing
+const VALID_CREDENTIALS = {
+  username: 'admin',
+  password: 'admin123'
+}
 
 export const useAuthStore = defineStore('auth', {
   state: () => ({
@@ -9,30 +16,40 @@ export const useAuthStore = defineStore('auth', {
   
   actions: {
     async login(username, password) {
-      try {
-        const response = await axios.post('/api/auth/login', {
-          username,
-          password
-        })
-        this.user = response.data
+      // Simulasi API call
+      await new Promise(resolve => setTimeout(resolve, 500))
+
+      // Validasi sederhana
+      if (username === VALID_CREDENTIALS.username && 
+          password === VALID_CREDENTIALS.password) {
+        const userData = {
+          id_user: '1',
+          username: username,
+          role: 'admin'
+        }
+        this.user = userData
         this.isAuthenticated = true
-        localStorage.setItem('user', JSON.stringify(response.data))
-        return response.data
-      } catch (error) {
-        throw error
+        localStorage.setItem('user', JSON.stringify(userData))
+        return userData
+      } else {
+        throw new Error('Username atau password salah')
       }
     },
 
     async logout() {
-      try {
-        await axios.post('/api/auth/logout', {
-          userId: this.user?.id_user
-        })
-        this.user = null
-        this.isAuthenticated = false
-        localStorage.removeItem('user')
-      } catch (error) {
-        throw error
+      // Simulasi API call
+      await new Promise(resolve => setTimeout(resolve, 300))
+      
+      this.user = null
+      this.isAuthenticated = false
+      localStorage.removeItem('user')
+    },
+
+    checkAuth() {
+      const userData = localStorage.getItem('user')
+      if (userData) {
+        this.user = JSON.parse(userData)
+        this.isAuthenticated = true
       }
     }
   }

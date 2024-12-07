@@ -2,6 +2,7 @@ import { createRouter, createWebHistory } from 'vue-router'
 import LoginPage from '@/views/LoginPage.vue'
 import MainWorkspace from '@/views/MainWorkspace.vue'
 import TransactionForm from '@/views/TransactionForm.vue'
+import { useAuthStore } from '@/stores/auth'
 
 const routes = [
   {
@@ -24,16 +25,19 @@ const routes = [
 ]
 
 const router = createRouter({
-  history: createWebHistory(process.env.BASE_URL),
+  history: createWebHistory(),
   routes
 })
 
 // Navigation guard untuk autentikasi
 router.beforeEach((to, from, next) => {
-  const isAuthenticated = localStorage.getItem('isAuthenticated')
-  
+  const authStore = useAuthStore()
+  const isAuthenticated = authStore.isAuthenticated
+
   if (to.meta.requiresAuth && !isAuthenticated) {
     next('/')
+  } else if (to.path === '/' && isAuthenticated) {
+    next('/workspace')
   } else {
     next()
   }

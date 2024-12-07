@@ -11,18 +11,23 @@
             v-model="form.category"
             required
           >
-            <option value="A">Kategori A</option>
-            <option value="B">Kategori B</option>
-            <option value="C">Kategori C</option>
+            <option value="">Pilih Kategori</option>
+            <option v-for="category in categories" 
+                    :key="category.id_category" 
+                    :value="category.id_category">
+              {{ category.title }}
+            </option>
           </select>
         </div>
 
         <div class="form-group">
-          <label for="amount">Jumlah</label>
+          <label for="amount">Jumlah Pengeluaran</label>
           <input 
             type="number"
             id="amount"
             v-model="form.amount"
+            min="0"
+            step="1000"
             required
           />
         </div>
@@ -33,6 +38,7 @@
             id="description"
             v-model="form.description"
             rows="3"
+            maxlength="128"
           ></textarea>
         </div>
 
@@ -50,8 +56,8 @@
           <button type="button" @click="$router.push('/workspace')" class="cancel-button">
             Batal
           </button>
-          <button type="submit" class="save-button">
-            {{ isEdit ? 'Update' : 'Simpan' }}
+          <button type="submit" class="save-button" :disabled="isLoading">
+            {{ isLoading ? 'Menyimpan...' : (isEdit ? 'Update' : 'Simpan') }}
           </button>
         </div>
       </form>
@@ -60,6 +66,8 @@
 </template>
 
 <script>
+import { useTransactionStore } from '../stores/transaction'
+
 export default {
   name: 'TransactionForm',
   data() {
@@ -68,23 +76,63 @@ export default {
         category: '',
         amount: '',
         description: '',
-        date: ''
+        date: new Date().toISOString().split('T')[0]
       },
-      isEdit: false
+      isEdit: false,
+      isLoading: false
     }
   },
-  created() {
+  computed: {
+    categories() {
+      return useTransactionStore().categories
+    }
+  },
+  async created() {
+    await useTransactionStore().fetchCategories()
+    
     const id = this.$route.query.id
     if (id) {
       this.isEdit = true
+      this.loadTransaction(id)
     }
   },
   methods: {
-    async handleSubmit() {
+    async loadTransaction(id) {
       try {
+        const transaction = this.transactions.find(t => t.id_transaction === id)
+        if (transaction) {
+          this.form = {
+            category: transaction.id_category,
+            amount: transaction.amount,
+            description: transaction.description,
+            date: new Date(transaction.timestamp).toISOString().split('T')[0]
+          }
+        }
+      } catch (error) {
+        console.error('Error loading transaction:', error)
+      }
+    },
+    async handleSubmit() {
+      this.isLoading = true
+      try {
+        const store = useTransactionStore()
+        const data = {
+          ...this.form,
+          amount: Number(this.form.amount)
+        }
+        
+        if (this.isEdit) {
+          await store.editTransaction(this.$route.query.id, data)
+        } else {
+          await store.addTransaction(data)
+        }
+        
         this.$router.push('/workspace')
-      } catch (err) {
-        alert('Terjadi kesalahan. Silakan coba lagi.')
+      } catch (error) {
+        console.error('Error saving transaction:', error)
+        alert('Gagal menyimpan transaksi. Silakan coba lagi.')
+      } finally {
+        this.isLoading = false
       }
     }
   }
@@ -92,5 +140,75 @@ export default {
 </script>
 
 <style scoped>
-/* Style yang sudah ada tetap sama */
+.form-container {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1rem;
+  background-color: #f5f5f5;
+}
+
+.form-card {
+  background: white;
+  padding: 2rem;
+  border-radius: 8px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  width: 100%;
+  max-width: 500px;
+}
+
+.transaction-form {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  margin-top: 1rem;
+}
+
+.form-group {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+input, select, textarea {
+  padding: 0.75rem;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  font-size: 1rem;
+}
+
+textarea {
+  resize: vertical;
+}
+
+.button-group {
+  display: flex;
+  gap: 1rem;
+  margin-top: 1rem;
+}
+
+.save-button, .cancel-button {
+  padding: 0.75rem 1.5rem;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 1rem;
+  flex: 1;
+}
+
+.save-button {
+  background-color: #4CAF50;
+  color: white;
+}
+
+.save-button:disabled {
+  background-color: #ccc;
+  cursor: not-allowed;
+}
+
+.cancel-button {
+  background-color: #9e9e9e;
+  color: white;
+}
 </style> 

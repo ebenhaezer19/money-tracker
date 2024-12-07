@@ -10,13 +10,5 @@ module.exports = defineConfig({
         __VUE_PROD_DEVTOOLS__: 'false'
       })
     ]
-  },
-  devServer: {
-    proxy: {
-      '/api': {
-        target: 'http://localhost:5000',
-        changeOrigin: true
-      }
-    }
   }
 })

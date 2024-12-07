@@ -9,26 +9,49 @@
             type="text" 
             id="username"
             v-model="username"
+            :disabled="isLoading"
             required
+            autocomplete="username"
           />
         </div>
         
         <div class="form-group">
           <label for="password">Password</label>
-          <input 
-            type="password" 
-            id="password"
-            v-model="password"
-            required
-          />
+          <div class="password-input">
+            <input 
+              :type="showPassword ? 'text' : 'password'"
+              id="password"
+              v-model="password"
+              :disabled="isLoading"
+              required
+              autocomplete="current-password"
+            />
+            <button 
+              type="button" 
+              class="toggle-password"
+              @click="showPassword = !showPassword"
+            >
+              {{ showPassword ? '🙈' : '👁️' }}
+            </button>
+          </div>
         </div>
 
-        <button type="submit" class="login-button" :disabled="isLoading">
+        <button 
+          type="submit" 
+          class="login-button" 
+          :disabled="isLoading || !isValid"
+        >
           {{ isLoading ? 'Loading...' : 'Login' }}
         </button>
         
         <div v-if="error" class="error-message">
           {{ error }}
+        </div>
+
+        <div class="login-help">
+          <p>Demo credentials:</p>
+          <p>Username: admin</p>
+          <p>Password: admin123</p>
         </div>
       </form>
     </div>
@@ -45,7 +68,13 @@ export default {
       username: '',
       password: '',
       error: '',
-      isLoading: false
+      isLoading: false,
+      showPassword: false
+    }
+  },
+  computed: {
+    isValid() {
+      return this.username.length > 0 && this.password.length > 0
     }
   },
   methods: {
@@ -58,7 +87,7 @@ export default {
         await authStore.login(this.username, this.password)
         this.$router.push('/workspace')
       } catch (err) {
-        this.error = err.response?.data?.message || 'Login gagal. Silakan coba lagi.'
+        this.error = err.message || 'Login gagal. Silakan coba lagi.'
       } finally {
         this.isLoading = false
       }
@@ -120,5 +149,38 @@ input {
 .error-message {
   color: red;
   text-align: center;
+}
+
+.password-input {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.toggle-password {
+  position: absolute;
+  right: 10px;
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 5px;
+}
+
+.login-help {
+  margin-top: 1rem;
+  padding-top: 1rem;
+  border-top: 1px solid #eee;
+  font-size: 0.9rem;
+  color: #666;
+}
+
+input:disabled {
+  background-color: #f5f5f5;
+  cursor: not-allowed;
+}
+
+.login-button:disabled {
+  background-color: #ccc;
+  cursor: not-allowed;
 }
 </style>
