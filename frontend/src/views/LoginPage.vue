@@ -1,7 +1,7 @@
 <template>
   <div class="login-container">
     <div class="login-card">
-      <h2>Finance Tracker</h2>
+      <h2>Money Tracker</h2>
       <form @submit.prevent="handleLogin" class="login-form">
         <div class="form-group">
           <label for="username">Username</label>
@@ -23,7 +23,9 @@
           />
         </div>
 
-        <button type="submit" class="login-button">Login</button>
+        <button type="submit" class="login-button" :disabled="isLoading">
+          {{ isLoading ? 'Loading...' : 'Login' }}
+        </button>
         
         <div v-if="error" class="error-message">
           {{ error }}
@@ -34,23 +36,31 @@
 </template>
 
 <script>
+import { useAuthStore } from '../stores/auth'
+
 export default {
   name: 'LoginPage',
   data() {
     return {
       username: '',
       password: '',
-      error: ''
+      error: '',
+      isLoading: false
     }
   },
   methods: {
     async handleLogin() {
+      this.isLoading = true
+      this.error = ''
+      
       try {
-        // Implementasi login API nanti
-        localStorage.setItem('isAuthenticated', 'true')
+        const authStore = useAuthStore()
+        await authStore.login(this.username, this.password)
         this.$router.push('/workspace')
       } catch (err) {
-        this.error = 'Login gagal. Silakan coba lagi.'
+        this.error = err.response?.data?.message || 'Login gagal. Silakan coba lagi.'
+      } finally {
+        this.isLoading = false
       }
     }
   }
@@ -100,6 +110,11 @@ input {
   border: none;
   border-radius: 4px;
   cursor: pointer;
+}
+
+.login-button:disabled {
+  background-color: #ccc;
+  cursor: not-allowed;
 }
 
 .error-message {
