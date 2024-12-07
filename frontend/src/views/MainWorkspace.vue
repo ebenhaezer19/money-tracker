@@ -1,133 +1,279 @@
 <template>
   <div class="workspace-container">
-    <header class="header">
-      <h1>Money Tracker</h1>
-      <div class="user-info">
-        <span>{{ user?.username }}</span>
-        <button @click="handleLogout" class="logout-button">Logout</button>
+    <!-- Top Bar with Filters -->
+    <div class="top-bar">
+      <div class="date-range">
+        <input 
+          type="date" 
+          v-model="startDate" 
+          @change="fetchTransactions"
+          class="date-input"
+        >
+        <span class="date-separator">-</span>
+        <input 
+          type="date" 
+          v-model="endDate" 
+          @change="fetchTransactions"
+          class="date-input"
+        >
       </div>
-    </header>
 
-    <div class="content">
-      <aside class="sidebar">
-        <div class="categories">
-          <h3>Kategori</h3>
-          <ul>
-            <li 
-              v-for="category in categories" 
-              :key="category.id_category"
-              :class="{ active: selectedCategory === category.id_category }"
-              @click="selectCategory(category)"
+      <!-- Category Checkboxes -->
+      <div class="categories-filter">
+        <div 
+          v-for="category in categories" 
+          :key="category.id"
+          class="category-item"
+          :style="{
+            borderLeft: `4px solid ${category.color}`
+          }"
+        >
+          <input 
+            type="checkbox" 
+            :id="category.id"
+            v-model="category.isVisible"
+            @change="updateVisibleCategories"
+          >
+          <label :for="category.id">{{ category.name }}</label>
+        </div>
+      </div>
+    </div>
+
+    <!-- Simple Table -->
+    <div class="table-container">
+      <table class="transaction-table">
+        <thead>
+          <tr>
+            <th>Category</th>
+            <th>Date</th>
+            <th>Amount (IDR)</th>
+            <th>Description</th>
+            <th>Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          <template v-for="category in visibleCategories" :key="category.id">
+            <!-- Category Row with Add Button -->
+            <tr 
+              class="category-row" 
+              :class="{ 'over-budget': isOverBudget(category.id) }"
+              :style="{
+                borderLeft: `4px solid ${category.color}`
+              }"
             >
-              {{ category.title }}
-              <button @click.stop="editCategory(category)" class="edit-icon">✏️</button>
-              <button @click.stop="hideCategory(category.id_category)" class="hide-icon">👁️</button>
-            </li>
-          </ul>
-        </div>
+              <td colspan="5">
+                <div class="category-header">
+                  <strong>{{ category.name }}</strong>
+                  <button 
+                    @click="openAddTransaction(category.id)" 
+                    class="add-btn"
+                    :style="{
+                      backgroundColor: category.color
+                    }"
+                    title="Add new transaction"
+                  >
+                    + Add Transaction
+                  </button>
+                </div>
+              </td>
+            </tr>
+            <!-- Transaction Rows -->
+            <tr 
+              v-for="transaction in getTransactionsByCategory(category.id)" 
+              :key="transaction.id"
+              @dblclick="editTransaction(transaction)"
+              class="transaction-row"
+              :style="{
+                borderLeft: `4px solid ${category.color}`
+              }"
+            >
+              <td></td>
+              <td>{{ formatDate(transaction.date) }}</td>
+              <td>IDR {{ formatNumber(transaction.amount) }}</td>
+              <td>{{ transaction.description }}</td>
+              <td>
+                <button @click.stop="deleteTransaction(transaction.id)" class="delete-btn">
+                  🗑️
+                </button>
+              </td>
+            </tr>
+          </template>
+        </tbody>
+      </table>
+    </div>
 
-        <div class="date-filter">
-          <h3>Filter Tanggal</h3>
-          <div class="date-inputs">
-            <input type="date" v-model="startDate" @change="fetchTransactions">
-            <span>sampai</span>
-            <input type="date" v-model="endDate" @change="fetchTransactions">
+    <!-- Transaction Form Modal -->
+    <div v-if="showAddForm" class="modal-overlay">
+      <div class="modal-content">
+        <h2>{{ editingTransaction ? 'Edit Transaction' : 'Add Transaction' }}</h2>
+        <form @submit.prevent="saveTransaction">
+          <div class="form-group">
+            <label>Date</label>
+            <input type="date" v-model="formData.date" required>
           </div>
-        </div>
-      </aside>
 
-      <main class="main-content">
-        <div class="table-container">
-          <table>
-            <thead>
-              <tr>
-                <th>Kategori</th>
-                <th>Jumlah</th>
-                <th>Tanggal</th>
-                <th>Deskripsi</th>
-                <th>Aksi</th>
-              </tr>
-            </thead>
-            <tbody>
-              <tr 
-                v-for="transaction in transactions" 
-                :key="transaction.id_transaction"
-              >
-                <td>{{ getCategoryTitle(transaction.id_category) }}</td>
-                <td>Rp {{ formatNumber(transaction.amount) }}</td>
-                <td>{{ formatDate(transaction.timestamp) }}</td>
-                <td>{{ transaction.description }}</td>
-                <td>
-                  <button @click="editTransaction(transaction)" class="edit-button">Edit</button>
-                  <button @click="deleteTransaction(transaction.id_transaction)" class="delete-button">Hapus</button>
-                </td>
-              </tr>
-            </tbody>
-          </table>
-        </div>
+          <div class="form-group">
+            <label>Amount (IDR)</label>
+            <input 
+              type="number" 
+              v-model="formData.amount"
+              placeholder="0"
+              required
+            >
+          </div>
 
-        <button @click="$router.push('/transaction')" class="add-button">
-          + Tambah Transaksi
-        </button>
-      </main>
+          <div class="form-group">
+            <label>Category</label>
+            <select v-model="formData.category" required>
+              <option v-for="cat in categories" :key="cat.id" :value="cat.id">
+                {{ cat.name }}
+              </option>
+            </select>
+          </div>
+
+          <div class="form-group">
+            <label>Description</label>
+            <textarea 
+              v-model="formData.description"
+              rows="3"
+              placeholder="Add description..."
+            ></textarea>
+          </div>
+
+          <div class="form-actions">
+            <button type="button" @click="cancelTransaction" class="cancel-btn">
+              Cancel
+            </button>
+            <button type="submit" class="save-btn">
+              {{ editingTransaction ? 'Save' : 'Add' }}
+            </button>
+          </div>
+        </form>
+      </div>
     </div>
   </div>
 </template>
 
 <script>
-import { useAuthStore } from '../stores/auth'
 import { useTransactionStore } from '../stores/transaction'
 
 export default {
   name: 'MainWorkspace',
   data() {
     return {
-      selectedCategory: null,
       startDate: '',
       endDate: '',
-      isLoading: false
+      showAddForm: false,
+      editingTransaction: null,
+      formData: {
+        date: '',
+        amount: '',
+        description: '',
+        category: ''
+      },
+      categories: [
+        { 
+          id: 'cat1', 
+          name: 'Category 1', 
+          isVisible: true,
+          budget: 1000000,
+          color: '#4CAF50'  // Green
+        },
+        { 
+          id: 'cat2', 
+          name: 'Category 2', 
+          isVisible: true,
+          budget: 2000000,
+          color: '#2196F3'  // Blue
+        },
+        { 
+          id: 'cat3', 
+          name: 'Category 3', 
+          isVisible: true,
+          budget: 1500000,
+          color: '#FFC107'  // Amber
+        },
+        { 
+          id: 'cat4', 
+          name: 'Category 4', 
+          isVisible: true,
+          budget: 3000000,
+          color: '#9C27B0'  // Purple
+        }
+      ]
     }
   },
   computed: {
-    user() {
-      return useAuthStore().user
+    visibleCategories() {
+      return this.categories.filter(cat => cat.isVisible)
     },
     transactions() {
-      return useTransactionStore().transactions
-    },
-    categories() {
-      return useTransactionStore().categories
+      const transactionStore = useTransactionStore()
+      return transactionStore.transactions
     }
   },
   methods: {
-    async fetchTransactions() {
-      const filters = {
-        userId: this.user.id_user,
-        categoryId: this.selectedCategory,
-        dateBegin: this.startDate,
-        dateEnd: this.endDate
-      }
-      
-      try {
-        await useTransactionStore().fetchTransactions(filters)
-      } catch (error) {
-        console.error('Error fetching transactions:', error)
-      }
-    },
     formatNumber(value) {
-      return value.toLocaleString('id-ID')
+      return value?.toLocaleString('id-ID') || '0'
     },
     formatDate(date) {
       return new Date(date).toLocaleDateString('id-ID')
     },
-    getCategoryTitle(categoryId) {
-      const category = this.categories.find(c => c.id_category === categoryId)
-      return category ? category.title : '-'
+    getTransactionsByCategory(categoryId) {
+      return this.transactions.filter(t => t.category === categoryId)
     },
-    async deleteTransaction(transactionId) {
-      if (confirm('Yakin ingin menghapus transaksi ini?')) {
+    getTotalByCategory(categoryId) {
+      return this.getTransactionsByCategory(categoryId)
+        .reduce((sum, t) => sum + (Number(t.amount) || 0), 0)
+    },
+    isOverBudget(categoryId) {
+      const category = this.categories.find(c => c.id === categoryId)
+      const total = this.getTotalByCategory(categoryId)
+      return total > category.budget
+    },
+    updateVisibleCategories() {
+      localStorage.setItem('visibleCategories', JSON.stringify(this.categories))
+    },
+    openAddTransaction(categoryId) {
+      this.formData.category = categoryId
+      this.showAddForm = true
+    },
+    cancelTransaction() {
+      if (confirm('Are you sure you want to cancel this transaction?')) {
+        this.showAddForm = false
+        this.resetForm()
+      }
+    },
+    async fetchTransactions() {
+      const transactionStore = useTransactionStore()
+      await transactionStore.fetchTransactions({
+        startDate: this.startDate,
+        endDate: this.endDate
+      })
+    },
+    async saveTransaction() {
+      const transactionStore = useTransactionStore()
+      try {
+        if (this.editingTransaction) {
+          await transactionStore.updateTransaction({
+            ...this.formData,
+            id: this.editingTransaction.id
+          })
+        } else {
+          await transactionStore.addTransaction(this.formData)
+        }
+        this.showAddForm = false
+        this.resetForm()
+        await this.fetchTransactions()
+      } catch (error) {
+        console.error('Error saving transaction:', error)
+      }
+    },
+    async deleteTransaction(id) {
+      if (confirm('Apakah Anda yakin ingin menghapus transaksi ini?')) {
+        const transactionStore = useTransactionStore()
         try {
-          await useTransactionStore().deleteTransaction(transactionId)
+          await transactionStore.deleteTransaction(id)
           await this.fetchTransactions()
         } catch (error) {
           console.error('Error deleting transaction:', error)
@@ -135,125 +281,336 @@ export default {
       }
     },
     editTransaction(transaction) {
-      this.$router.push({
-        path: '/transaction',
-        query: { id: transaction.id_transaction }
-      })
+      this.editingTransaction = transaction
+      this.formData = { ...transaction }
+      this.showAddForm = true
     },
-    selectCategory(category) {
-      this.selectedCategory = category.id_category
-      this.fetchTransactions()
-    },
-    async handleLogout() {
-      try {
-        await useAuthStore().logout()
-        this.$router.push('/')
-      } catch (error) {
-        console.error('Error logging out:', error)
+    resetForm() {
+      this.formData = {
+        date: '',
+        amount: '',
+        description: '',
+        category: ''
       }
+      this.editingTransaction = null
     }
   },
   async created() {
-    await Promise.all([
-      useTransactionStore().fetchCategories(),
-      this.fetchTransactions()
-    ])
+    const savedColumns = localStorage.getItem('visibleColumns')
+    if (savedColumns) {
+      this.attributes = JSON.parse(savedColumns)
+    }
+    
+    if (!this.startDate) {
+      const today = new Date()
+      const firstDay = new Date(today.getFullYear(), today.getMonth(), 1)
+      this.startDate = firstDay.toISOString().split('T')[0]
+      this.endDate = today.toISOString().split('T')[0]
+    }
+    
+    await this.fetchTransactions()
   }
 }
 </script>
 
 <style scoped>
-.content {
-  display: grid;
-  grid-template-columns: 250px 1fr;
-  gap: 2rem;
-  padding: 2rem;
+.workspace-container {
+  padding: 1.5rem;
+  max-width: 1400px;
+  margin: 0 auto;
 }
 
-.sidebar {
+.top-bar {
   background: white;
   padding: 1rem;
   border-radius: 8px;
   box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-}
-
-.categories ul {
-  list-style: none;
-  padding: 0;
-}
-
-.categories li {
-  padding: 0.5rem;
-  cursor: pointer;
+  margin-bottom: 1rem;
   display: flex;
-  justify-content: space-between;
+  gap: 1rem;
+  flex-wrap: wrap;
+}
+
+.date-range {
+  display: flex;
   align-items: center;
-}
-
-.categories li.active {
-  background-color: #e3f2fd;
-}
-
-.edit-icon, .hide-icon {
-  background: none;
-  border: none;
-  cursor: pointer;
-  padding: 0.25rem;
-}
-
-.date-inputs {
-  display: flex;
-  flex-direction: column;
   gap: 0.5rem;
+}
+
+.date-input {
+  padding: 0.5rem;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+}
+
+.attributes-filter {
+  display: flex;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+  flex: 1;
+}
+
+.attribute-item {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+  padding: 0.25rem 0.5rem;
+  border-radius: 4px;
+}
+
+.add-transaction-btn {
+  background: #4CAF50;
+  color: white;
+  border: none;
+  padding: 0.5rem 1rem;
+  border-radius: 4px;
+  cursor: pointer;
 }
 
 .table-container {
   background: white;
-  padding: 1rem;
   border-radius: 8px;
   box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+  margin-top: 1rem;
   overflow-x: auto;
 }
 
-table {
+.excel-table {
+  width: 100%;
+  border-collapse: collapse;
+  border: 1px solid #ddd;
+}
+
+.excel-table th,
+.excel-table td {
+  padding: 0.75rem;
+  border: 1px solid #ddd;
+  text-align: left;
+}
+
+.excel-table th {
+  background-color: #f5f5f5;
+  font-weight: 600;
+  position: sticky;
+  top: 0;
+}
+
+.category-header-row {
+  background-color: #f9f9f9;
+}
+
+.category-header-row.over-budget {
+  background-color: #ffebee;
+}
+
+.category-header-row td {
+  padding: 0.5rem 0.75rem;
+}
+
+.budget-info {
+  float: right;
+  color: #666;
+  font-size: 0.9rem;
+}
+
+.transaction-row {
+  cursor: pointer;
+}
+
+.transaction-row:hover {
+  background-color: #f5f5f5;
+}
+
+.empty-message {
+  text-align: center;
+  color: #666;
+  padding: 1rem;
+  font-style: italic;
+}
+
+.delete-btn {
+  background: none;
+  border: none;
+  cursor: pointer;
+  opacity: 0.7;
+  transition: opacity 0.2s;
+}
+
+.delete-btn:hover {
+  opacity: 1;
+  color: #ef5350;
+}
+
+/* Modal Styles */
+.modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0,0,0,0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+}
+
+.modal-content {
+  background: white;
+  padding: 2rem;
+  border-radius: 8px;
+  width: 100%;
+  max-width: 600px;
+  max-height: 90vh;
+  overflow-y: auto;
+}
+
+.form-group {
+  margin-bottom: 1rem;
+}
+
+.form-group label {
+  display: block;
+  margin-bottom: 0.5rem;
+  font-weight: 500;
+}
+
+.form-group input,
+.form-group textarea {
+  width: 100%;
+  padding: 0.5rem;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+}
+
+.attributes-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: 1rem;
+}
+
+.form-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 1rem;
+  margin-top: 1.5rem;
+}
+
+.cancel-btn {
+  background: #f5f5f5;
+  border: none;
+  padding: 0.5rem 1rem;
+  border-radius: 4px;
+  cursor: pointer;
+}
+
+.save-btn {
+  background: #4CAF50;
+  color: white;
+  border: none;
+  padding: 0.5rem 1rem;
+  border-radius: 4px;
+  cursor: pointer;
+}
+
+@media (max-width: 768px) {
+  .top-bar {
+    flex-direction: column;
+  }
+  
+  .date-range {
+    width: 100%;
+  }
+  
+  .attributes-filter {
+    justify-content: flex-start;
+  }
+}
+
+.categories-filter {
+  display: flex;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
+.category-item {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem;
+  padding-left: 1rem;
+  border-radius: 4px;
+  background: #f5f5f5;
+  transition: all 0.3s ease;
+}
+
+.category-item:hover {
+  transform: translateX(4px);
+}
+
+.category-row {
+  background: #f9f9f9;
+  transition: background-color 0.3s ease;
+}
+
+.transaction-row {
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.transaction-row:hover {
+  background: #f5f5f5;
+  transform: translateX(4px);
+}
+
+.add-btn {
+  border: none;
+  padding: 0.5rem 1rem;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 0.9rem;
+  color: white;
+  transition: opacity 0.3s ease;
+}
+
+.add-btn:hover {
+  opacity: 0.9;
+}
+
+.category-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0.5rem;
+  background: #f5f5f5;
+}
+
+.transaction-table {
   width: 100%;
   border-collapse: collapse;
 }
 
-th, td {
+.transaction-table th,
+.transaction-table td {
   padding: 0.75rem;
   text-align: left;
-  border-bottom: 1px solid #eee;
+  border: 1px solid #ddd;
 }
 
-.edit-button, .delete-button {
-  padding: 0.25rem 0.5rem;
-  border: none;
-  border-radius: 4px;
-  cursor: pointer;
-  margin-right: 0.5rem;
+.transaction-table th {
+  background: #f5f5f5;
+  font-weight: 600;
 }
 
-.edit-button {
-  background-color: #2196F3;
-  color: white;
+.category-row {
+  background: #f9f9f9;
 }
 
-.delete-button {
-  background-color: #f44336;
-  color: white;
+.category-row.over-budget {
+  background: #ffebee;
 }
 
-.add-button {
-  position: fixed;
-  bottom: 2rem;
-  right: 2rem;
-  background-color: #4CAF50;
-  color: white;
-  padding: 1rem;
-  border: none;
-  border-radius: 50px;
-  cursor: pointer;
-  box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+.transaction-row:hover {
+  background: #f5f5f5;
 }
 </style> 

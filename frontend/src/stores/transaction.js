@@ -1,115 +1,84 @@
 import { defineStore } from 'pinia'
 
-// Data dummy untuk testing
-const DUMMY_CATEGORIES = [
-  { id_category: '1', title: 'Makanan' },
-  { id_category: '2', title: 'Transport' },
-  { id_category: '3', title: 'Belanja' }
-]
-
+// Data dummy yang lebih lengkap
 const DUMMY_TRANSACTIONS = [
   {
-    id_transaction: '1',
-    id_category: '1',
-    amount: 50000,
-    description: 'Makan siang',
-    timestamp: '2024-03-20',
-    isOverBudget: false
+    id: 1,
+    date: '2024-01-15',
+    amount: 150000,
+    category: 'Food',
+    payment: 'Cash',
+    status: 'Completed',
+    type: 'Expense',
+    description: 'Lunch'
   },
   {
-    id_transaction: '2',
-    id_category: '2',
-    amount: 200000,
-    description: 'Bensin',
-    timestamp: '2024-03-19',
-    isOverBudget: true
+    id: 2,
+    date: '2024-01-20',
+    amount: 500000,
+    category: 'Transport',
+    payment: 'Transfer',
+    status: 'Completed',
+    type: 'Expense',
+    description: 'Gas & parking'
+  },
+  {
+    id: 3,
+    date: '2024-02-01',
+    amount: 2500000,
+    category: 'Salary',
+    payment: 'Transfer',
+    status: 'Completed',
+    type: 'Income',
+    description: 'January salary'
   }
 ]
 
 export const useTransactionStore = defineStore('transaction', {
   state: () => ({
-    transactions: [],
-    categories: []
+    transactions: []
   }),
-  
+
   actions: {
-    async fetchTransactions(filters = {}) {
-      // Simulasi delay
-      await new Promise(resolve => setTimeout(resolve, 300))
-      
-      // Filter data dummy
-      let filtered = [...DUMMY_TRANSACTIONS]
-      
-      if (filters.categoryId) {
-        filtered = filtered.filter(t => t.id_category === filters.categoryId)
-      }
-      
-      if (filters.dateBegin) {
-        filtered = filtered.filter(t => t.timestamp >= filters.dateBegin)
-      }
-      
-      if (filters.dateEnd) {
-        filtered = filtered.filter(t => t.timestamp <= filters.dateEnd)
-      }
-      
-      this.transactions = filtered
-      return filtered
+    async fetchTransactions({ startDate, endDate }) {
+      // Filter berdasarkan tanggal
+      this.transactions = DUMMY_TRANSACTIONS.filter(transaction => {
+        const transactionDate = new Date(transaction.date)
+        const start = startDate ? new Date(startDate) : null
+        const end = endDate ? new Date(endDate) : null
+
+        if (start && end) {
+          return transactionDate >= start && transactionDate <= end
+        } else if (start) {
+          return transactionDate >= start
+        } else if (end) {
+          return transactionDate <= end
+        }
+        return true
+      })
     },
 
-    async addTransaction(transactionData) {
-      await new Promise(resolve => setTimeout(resolve, 300))
-      
+    async addTransaction(transaction) {
       const newTransaction = {
-        id_transaction: Date.now().toString(),
-        ...transactionData,
-        isOverBudget: Math.random() > 0.7
+        id: Date.now(),
+        ...transaction,
+        date: transaction.date || new Date().toISOString().split('T')[0]
       }
-      
-      this.transactions.push(newTransaction)
-      return newTransaction
+      this.transactions.unshift(newTransaction) // Menambahkan di awal array
     },
 
-    async editTransaction(transactionId, updates) {
-      await new Promise(resolve => setTimeout(resolve, 300))
-      
-      const index = this.transactions.findIndex(t => t.id_transaction === transactionId)
+    async updateTransaction(transaction) {
+      const index = this.transactions.findIndex(t => t.id === transaction.id)
       if (index !== -1) {
         this.transactions[index] = {
-          ...this.transactions[index],
-          ...updates
+          ...transaction,
+          date: transaction.date || new Date().toISOString().split('T')[0]
         }
-        return this.transactions[index]
       }
-      throw new Error('Transaction not found')
     },
 
-    async fetchCategories() {
-      await new Promise(resolve => setTimeout(resolve, 300))
-      this.categories = DUMMY_CATEGORIES
-      return DUMMY_CATEGORIES
-    },
-
-    async editCategory(categoryId, updates) {
-      await new Promise(resolve => setTimeout(resolve, 300))
-      
-      const index = this.categories.findIndex(c => c.id_category === categoryId)
-      if (index !== -1) {
-        this.categories[index] = {
-          ...this.categories[index],
-          ...updates
-        }
-        return this.categories[index]
-      }
-      throw new Error('Category not found')
-    },
-
-    async hideCategory(categoryId) {
-      await new Promise(resolve => setTimeout(resolve, 300))
-      
-      const index = this.categories.findIndex(c => c.id_category === categoryId)
-      if (index !== -1) {
-        this.categories[index].hidden = true
-      }
+    async deleteTransaction(id) {
+      this.transactions = this.transactions.filter(t => t.id !== id)
     }
   }
 })

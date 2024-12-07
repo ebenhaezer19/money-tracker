@@ -1,56 +1,98 @@
 import { defineStore } from 'pinia'
-// Hapus import axios karena tidak digunakan untuk sementara
-// import axios from 'axios'
+import axios from 'axios'
 
-// Hardcoded credentials untuk testing
-const VALID_CREDENTIALS = {
+// Demo credentials
+const DEMO_USER = {
   username: 'admin',
-  password: 'admin123'
+  password: 'admin123',
+  token: 'demo-token-123',
+  userData: {
+    id: 1,
+    username: 'admin',
+    role: 'admin'
+  }
 }
 
 export const useAuthStore = defineStore('auth', {
   state: () => ({
     user: null,
-    isAuthenticated: false
+    token: localStorage.getItem('token') || null
   }),
-  
+
+  getters: {
+    isAuthenticated: (state) => !!state.token
+  },
+
   actions: {
     async login(username, password) {
-      // Simulasi API call
-      await new Promise(resolve => setTimeout(resolve, 500))
+      try {
+        // Simulasi delay seperti API call sungguhan
+        await new Promise(resolve => setTimeout(resolve, 500))
 
-      // Validasi sederhana
-      if (username === VALID_CREDENTIALS.username && 
-          password === VALID_CREDENTIALS.password) {
-        const userData = {
-          id_user: '1',
-          username: username,
-          role: 'admin'
+        // Cek dengan demo credentials
+        if (username === DEMO_USER.username && password === DEMO_USER.password) {
+          this.token = DEMO_USER.token
+          this.user = DEMO_USER.userData
+          
+          localStorage.setItem('token', DEMO_USER.token)
+          return { token: DEMO_USER.token, user: DEMO_USER.userData }
         }
-        this.user = userData
-        this.isAuthenticated = true
-        localStorage.setItem('user', JSON.stringify(userData))
-        return userData
-      } else {
+        
         throw new Error('Username atau password salah')
+        
+        // Uncomment kode di bawah ini jika backend sudah siap
+        /*
+        const response = await axios.post('http://localhost:3000/api/auth/login', {
+          username,
+          password
+        })
+        
+        const { token, user } = response.data
+        this.token = token
+        this.user = user
+        
+        localStorage.setItem('token', token)
+        axios.defaults.headers.common['Authorization'] = `Bearer ${token}`
+        
+        return response.data
+        */
+      } catch (error) {
+        throw new Error(error.message || 'Login gagal')
       }
     },
 
-    async logout() {
-      // Simulasi API call
-      await new Promise(resolve => setTimeout(resolve, 300))
-      
+    logout() {
       this.user = null
-      this.isAuthenticated = false
-      localStorage.removeItem('user')
+      this.token = null
+      localStorage.removeItem('token')
+      delete axios.defaults.headers.common['Authorization']
     },
 
-    checkAuth() {
-      const userData = localStorage.getItem('user')
-      if (userData) {
-        this.user = JSON.parse(userData)
-        this.isAuthenticated = true
+    async checkAuth() {
+      const token = localStorage.getItem('token')
+      if (token) {
+        try {
+          // Untuk demo, langsung set user jika token cocok
+          if (token === DEMO_USER.token) {
+            this.token = token
+            this.user = DEMO_USER.userData
+            return true
+          }
+          
+          // Uncomment untuk verifikasi dengan backend nanti
+          /*
+          axios.defaults.headers.common['Authorization'] = `Bearer ${token}`
+          const response = await axios.get('http://localhost:3000/api/auth/verify')
+          this.user = response.data.user
+          */
+          
+          return true
+        } catch (error) {
+          this.logout()
+          return false
+        }
       }
+      return false
     }
   }
 }) 

@@ -6,9 +6,13 @@ import { useAuthStore } from '@/stores/auth'
 
 const routes = [
   {
-    path: '/',
+    path: '/login',
     name: 'Login',
     component: LoginPage
+  },
+  {
+    path: '/',
+    redirect: '/workspace'
   },
   {
     path: '/workspace',
@@ -17,8 +21,8 @@ const routes = [
     meta: { requiresAuth: true }
   },
   {
-    path: '/transaction',
-    name: 'Transaction',
+    path: '/transaction/new',
+    name: 'NewTransaction',
     component: TransactionForm,
     meta: { requiresAuth: true }
   }
@@ -32,15 +36,20 @@ const router = createRouter({
 // Navigation guard untuk autentikasi
 router.beforeEach((to, from, next) => {
   const authStore = useAuthStore()
-  const isAuthenticated = authStore.isAuthenticated
+  const publicPages = ['/login']
+  const authRequired = !publicPages.includes(to.path)
 
-  if (to.meta.requiresAuth && !isAuthenticated) {
-    next('/')
-  } else if (to.path === '/' && isAuthenticated) {
-    next('/workspace')
-  } else {
-    next()
+  // Redirect ke login jika belum auth dan mencoba akses halaman yang butuh auth
+  if (authRequired && !authStore.isAuthenticated) {
+    return next('/login')
   }
+
+  // Redirect ke workspace jika sudah auth dan mencoba akses login
+  if (to.path === '/login' && authStore.isAuthenticated) {
+    return next('/workspace')
+  }
+
+  next()
 })
 
 export default router
