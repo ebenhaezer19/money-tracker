@@ -16,7 +16,8 @@ from flask_login import (
 
 from .config import Config
 from .. import bcrypt, db, login_manager
-from ..models import User
+from ..models import Category, User
+from ..utils import generate_id
 
 
 auth_bp = Blueprint("auth", __name__)
@@ -30,7 +31,7 @@ def load_user(id):
 @auth_bp.route("/register", methods=["POST"])
 def register():
     """
-    Allows the IT team to register a user account; this feature is not to be enabled in production.
+    Allows the dev team to register a user account; this feature is not to be regularly enabled in production.
     """
     
     data = request.get_json()
@@ -61,11 +62,32 @@ def register():
             "message": "Invalid username.",
             "details": "Username can only contain alphanumeric characters, underscores, and hyphens."}), 400
         )
+    if len(username) < 3 or len(username) > 64:
+        return (
+            jsonify({
+            "message": "Invalid username.",
+            "details": "Username must be 3-64 characters long."}), 400
+        )
+        
+    # Invalid password
+    if len(password) < 6:
+        return (
+            jsonify({
+            "message": "Invalid password.",
+            "details": "Password must be least 6 characters long."}), 400
+        )
     
     # Registration successful
     password_hash = bcrypt.generate_password_hash(password).decode("utf-8")
-    user_to_register = User(username=username, password=password_hash)
+    user_id = generate_id()
+    user_to_register = User(id_user=user_id, username=username, password=password_hash)
     db.session.add(user_to_register)
+    
+    default_titles = ('A', 'B', 'C', 'D', 'E')
+    for title in default_titles:
+        category = Category(id_category=generate_id(),title=title,user_id=user_id)
+        db.session.add(category)
+        
     db.session.commit()
     
     return (
@@ -100,10 +122,10 @@ def login():
         assert user  # invalid username
         assert bcrypt.check_password_hash(user.password, password)  # invalid password
     except:
-        return jsonify({"message": "Invalid username or password."}), 401
+        return jsonify({"message": "Invalid username or password."}), 400
     
     # Login successful
-    login_user()
+    login_user(user)
     return (
         jsonify({"message": "Login successful."}), 200
     )
