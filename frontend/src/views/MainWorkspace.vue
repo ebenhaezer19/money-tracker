@@ -41,65 +41,76 @@
 
     <!-- Simple Table -->
     <div class="table-container">
-      <table class="transaction-table">
-        <thead>
-          <tr>
-            <th>Category</th>
-            <th>Date</th>
-            <th>Amount (IDR)</th>
-            <th>Description</th>
-            <th>Actions</th>
-          </tr>
-        </thead>
-        <tbody>
-          <template v-for="category in visibleCategories" :key="category.id">
-            <!-- Category Row with Add Button -->
-            <tr 
-              class="category-row" 
-              :class="{ 'over-budget': isOverBudget(category.id) }"
-              :style="{
-                borderLeft: `4px solid ${category.color}`
-              }"
+      <div class="category-grid">
+        <div v-for="category in visibleCategories" :key="category.id" class="category-row">
+          <!-- Category Header -->
+          <div 
+            class="category-header"
+            :style="{ borderLeft: `4px solid ${category.color}` }"
+          >
+            <strong>{{ category.name }}</strong>
+            <button 
+              @click="openAddTransaction(category.id)" 
+              class="add-btn"
+              :style="{ backgroundColor: category.color }"
             >
-              <td colspan="5">
-                <div class="category-header">
-                  <strong>{{ category.name }}</strong>
-                  <button 
-                    @click="openAddTransaction(category.id)" 
-                    class="add-btn"
-                    :style="{
-                      backgroundColor: category.color
-                    }"
-                    title="Add new transaction"
-                  >
-                    + Add Transaction
-                  </button>
+              + Add
+            </button>
+          </div>
+          
+          <!-- Transaction Grid -->
+          <div class="transaction-grid">
+            <!-- Header Columns -->
+            <div class="grid-headers">
+              <div class="grid-header">Date</div>
+              <div class="grid-header">Amount</div>
+              <div class="grid-header">Description</div>
+            </div>
+            
+            <!-- Transaction Columns -->
+            <div class="grid-columns">
+              <!-- Date Column -->
+              <div class="grid-column">
+                <div 
+                  v-for="transaction in getTransactionsByCategory(category.id)" 
+                  :key="transaction.id"
+                  class="transaction-seat"
+                  :style="{ borderColor: category.color }"
+                  @click="togglePopup(transaction.id)"
+                >
+                  {{ formatDate(transaction.date) }}
                 </div>
-              </td>
-            </tr>
-            <!-- Transaction Rows -->
-            <tr 
-              v-for="transaction in getTransactionsByCategory(category.id)" 
-              :key="transaction.id"
-              @dblclick="editTransaction(transaction)"
-              class="transaction-row"
-              :style="{
-                borderLeft: `4px solid ${category.color}`
-              }"
-            >
-              <td></td>
-              <td>{{ formatDate(transaction.date) }}</td>
-              <td>IDR {{ formatNumber(transaction.amount) }}</td>
-              <td>{{ transaction.description }}</td>
-              <td>
-                <button @click.stop="deleteTransaction(transaction.id)" class="delete-btn">
-                  🗑️
-                </button>
-              </td>
-            </tr>
-          </template>
-        </tbody>
-      </table>
+              </div>
+
+              <!-- Amount Column -->
+              <div class="grid-column">
+                <div 
+                  v-for="transaction in getTransactionsByCategory(category.id)" 
+                  :key="transaction.id"
+                  class="transaction-seat"
+                  :style="{ borderColor: category.color }"
+                  @click="togglePopup(transaction.id)"
+                >
+                  IDR {{ formatNumber(transaction.amount) }}
+                </div>
+              </div>
+
+              <!-- Description Column -->
+              <div class="grid-column">
+                <div 
+                  v-for="transaction in getTransactionsByCategory(category.id)" 
+                  :key="transaction.id"
+                  class="transaction-seat"
+                  :style="{ borderColor: category.color }"
+                  @click="togglePopup(transaction.id)"
+                >
+                  {{ transaction.description }}
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
     </div>
 
     <!-- Transaction Form Modal -->
@@ -200,6 +211,65 @@ export default {
           budget: 3000000,
           color: '#9C27B0'  // Purple
         }
+      ],
+      selectedTransaction: null,
+      mockTransactions: [
+        {
+          id: 1,
+          date: '2024-03-01',
+          amount: 1500000,
+          description: 'Gaji Bulanan',
+          category: 'cat1'
+        },
+        {
+          id: 2,
+          date: '2024-03-02',
+          amount: 500000,
+          description: 'Belanja Bulanan',
+          category: 'cat1'
+        },
+        {
+          id: 3,
+          date: '2024-03-03',
+          amount: 250000,
+          description: 'Makan di Restoran',
+          category: 'cat2'
+        },
+        {
+          id: 4,
+          date: '2024-03-04',
+          amount: 100000,
+          description: 'Transportasi',
+          category: 'cat2'
+        },
+        {
+          id: 5,
+          date: '2024-03-05',
+          amount: 300000,
+          description: 'Tagihan Internet',
+          category: 'cat3'
+        },
+        {
+          id: 6,
+          date: '2024-03-06',
+          amount: 200000,
+          description: 'Tagihan Listrik',
+          category: 'cat3'
+        },
+        {
+          id: 7,
+          date: '2024-03-07',
+          amount: 1000000,
+          description: 'Investasi Saham',
+          category: 'cat4'
+        },
+        {
+          id: 8,
+          date: '2024-03-08',
+          amount: 750000,
+          description: 'Tabungan',
+          category: 'cat4'
+        }
       ]
     }
   },
@@ -208,8 +278,7 @@ export default {
       return this.categories.filter(cat => cat.isVisible)
     },
     transactions() {
-      const transactionStore = useTransactionStore()
-      return transactionStore.transactions
+      return this.mockTransactions
     }
   },
   methods: {
@@ -293,6 +362,20 @@ export default {
         category: ''
       }
       this.editingTransaction = null
+    },
+    togglePopup(transactionId) {
+      if (this.selectedTransaction === transactionId) {
+        this.selectedTransaction = null;
+      } else {
+        this.selectedTransaction = transactionId;
+      }
+    },
+    closePopup() {
+      this.selectedTransaction = null;
+    },
+    getCategoryName(categoryId) {
+      const category = this.categories.find(c => c.id === categoryId);
+      return category ? category.name : '';
     }
   },
   async created() {
@@ -612,5 +695,271 @@ export default {
 
 .transaction-row:hover {
   background: #f5f5f5;
+}
+
+.cell-with-tooltip {
+  position: relative;
+}
+
+.tooltip {
+  visibility: hidden;
+  position: absolute;
+  bottom: -35px;
+  left: 50%;
+  transform: translateX(-50%);
+  background-color: rgba(0, 0, 0, 0.8);
+  color: white;
+  padding: 5px 10px;
+  border-radius: 4px;
+  font-size: 0.8rem;
+  white-space: nowrap;
+  z-index: 100;
+  opacity: 0;
+  transition: opacity 0.2s, visibility 0.2s;
+}
+
+.tooltip::before {
+  content: '';
+  position: absolute;
+  top: -5px;
+  left: 50%;
+  transform: translateX(-50%);
+  border-width: 0 5px 5px 5px;
+  border-style: solid;
+  border-color: transparent transparent rgba(0, 0, 0, 0.8) transparent;
+}
+
+.cell-with-tooltip:hover .tooltip {
+  visibility: visible;
+  opacity: 1;
+}
+
+/* Pastikan tooltip tidak terpotong di baris terakhir */
+.transaction-table tr:last-child .tooltip {
+  bottom: auto;
+  top: -35px;
+}
+
+.transaction-table tr:last-child .tooltip::before {
+  top: auto;
+  bottom: -5px;
+  border-width: 5px 5px 0 5px;
+  border-color: rgba(0, 0, 0, 0.8) transparent transparent transparent;
+}
+
+.cell-with-popup {
+  position: relative;
+  cursor: pointer;
+}
+
+.popup-details {
+  display: none;
+  position: absolute;
+  left: 0;
+  right: 0;
+  background: white;
+  border-radius: 8px;
+  box-shadow: 0 2px 12px rgba(0,0,0,0.15);
+  z-index: 1000;
+  width: 300px;
+  margin-top: 10px;
+}
+
+.popup-details.show {
+  display: block;
+}
+
+.popup-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 12px 16px;
+  background: #f5f5f5;
+  border-radius: 8px 8px 0 0;
+  border-bottom: 1px solid #ddd;
+}
+
+.close-popup {
+  background: none;
+  border: none;
+  font-size: 20px;
+  cursor: pointer;
+  padding: 0 4px;
+}
+
+.popup-content {
+  padding: 16px;
+}
+
+.detail-row {
+  display: flex;
+  margin-bottom: 8px;
+  font-size: 0.9rem;
+}
+
+.detail-label {
+  width: 80px;
+  color: #666;
+  font-weight: 500;
+}
+
+.detail-value {
+  flex: 1;
+}
+
+.popup-actions {
+  display: flex;
+  gap: 8px;
+  padding: 12px 16px;
+  background: #f5f5f5;
+  border-top: 1px solid #ddd;
+  border-radius: 0 0 8px 8px;
+}
+
+.edit-btn, .delete-btn-popup {
+  padding: 6px 12px;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 0.9rem;
+  flex: 1;
+}
+
+.edit-btn {
+  background: #2196F3;
+  color: white;
+}
+
+.delete-btn-popup {
+  background: #f44336;
+  color: white;
+}
+
+/* Animasi untuk popup */
+.popup-details {
+  transform-origin: top center;
+  transition: all 0.2s ease;
+  opacity: 0;
+  transform: translateY(-10px);
+}
+
+.popup-details.show {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+/* Overlay untuk menutup popup saat klik di luar */
+.workspace-container {
+  position: relative;
+}
+
+.popup-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: transparent;
+  z-index: 999;
+  display: none;
+}
+
+.popup-overlay.show {
+  display: block;
+}
+
+.category-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 2rem;
+}
+
+.category-row {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.category-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0.75rem;
+  background: #f5f5f5;
+  border-radius: 4px;
+}
+
+.transaction-grid {
+  padding: 1rem;
+  background: white;
+  border-radius: 8px;
+}
+
+.grid-headers {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 1rem;
+  margin-bottom: 1rem;
+  padding: 0.5rem;
+  background: #f5f5f5;
+  border-radius: 4px;
+}
+
+.grid-header {
+  font-weight: 600;
+  text-align: center;
+}
+
+.grid-columns {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 1rem;
+}
+
+.grid-column {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  align-items: center;
+}
+
+.transaction-seat {
+  width: 120px;
+  height: 40px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0.5rem;
+  border: 2px solid;
+  border-radius: 6px;
+  background: white;
+  cursor: pointer;
+  font-size: 0.9rem;
+  text-align: center;
+  transition: all 0.2s ease;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.transaction-seat:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+  .grid-columns {
+    grid-template-columns: 1fr;
+    gap: 2rem;
+  }
+  
+  .grid-headers {
+    grid-template-columns: 1fr;
+  }
+  
+  .transaction-seat {
+    width: 100%;
+  }
 }
 </style> 
