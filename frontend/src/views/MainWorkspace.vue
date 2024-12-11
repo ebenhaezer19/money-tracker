@@ -75,8 +75,15 @@
                   v-for="transaction in getTransactionsByCategory(category.id)" 
                   :key="transaction.id"
                   class="transaction-seat"
+                  :class="{ 'pressed': pressedTransaction?.id === transaction.id }"
                   :style="{ borderColor: category.color }"
                   @click="togglePopup(transaction.id)"
+                  @mousedown="startPress(transaction)"
+                  @mouseup="cancelPress"
+                  @mouseleave="cancelPress"
+                  @touchstart.prevent="startPress(transaction)"
+                  @touchend.prevent="cancelPress"
+                  @touchcancel="cancelPress"
                 >
                   {{ formatDate(transaction.date) }}
                 </div>
@@ -88,8 +95,15 @@
                   v-for="transaction in getTransactionsByCategory(category.id)" 
                   :key="transaction.id"
                   class="transaction-seat"
+                  :class="{ 'pressed': pressedTransaction?.id === transaction.id }"
                   :style="{ borderColor: category.color }"
                   @click="togglePopup(transaction.id)"
+                  @mousedown="startPress(transaction)"
+                  @mouseup="cancelPress"
+                  @mouseleave="cancelPress"
+                  @touchstart.prevent="startPress(transaction)"
+                  @touchend.prevent="cancelPress"
+                  @touchcancel="cancelPress"
                 >
                   IDR {{ formatNumber(transaction.amount) }}
                 </div>
@@ -101,8 +115,15 @@
                   v-for="transaction in getTransactionsByCategory(category.id)" 
                   :key="transaction.id"
                   class="transaction-seat"
+                  :class="{ 'pressed': pressedTransaction?.id === transaction.id }"
                   :style="{ borderColor: category.color }"
                   @click="togglePopup(transaction.id)"
+                  @mousedown="startPress(transaction)"
+                  @mouseup="cancelPress"
+                  @mouseleave="cancelPress"
+                  @touchstart.prevent="startPress(transaction)"
+                  @touchend.prevent="cancelPress"
+                  @touchcancel="cancelPress"
                 >
                   {{ transaction.description }}
                 </div>
@@ -160,6 +181,53 @@
             </button>
           </div>
         </form>
+      </div>
+    </div>
+
+    <!-- Tambahkan popup card di bawah table-container, sebelum transaction form modal -->
+    <div v-if="selectedTransaction" class="transaction-card-popup">
+      <div class="card-content">
+        <div class="card-header">
+          <h3>Transaction Details</h3>
+          <button class="close-card" @click="closePopup">×</button>
+        </div>
+        
+        <div class="card-body">
+          <div class="transaction-info">
+            <div class="info-row">
+              <div class="info-icon">📅</div>
+              <div class="info-content">
+                <div class="info-label">Date</div>
+                <div class="info-value">{{ formatDate(getSelectedTransaction.date) }}</div>
+              </div>
+            </div>
+            
+            <div class="info-row">
+              <div class="info-icon">💰</div>
+              <div class="info-content">
+                <div class="info-label">Amount</div>
+                <div class="info-value amount">IDR {{ formatNumber(getSelectedTransaction.amount) }}</div>
+              </div>
+            </div>
+            
+            <div class="info-row">
+              <div class="info-icon">📝</div>
+              <div class="info-content">
+                <div class="info-label">Description</div>
+                <div class="info-value">{{ getSelectedTransaction.description }}</div>
+              </div>
+            </div>
+          </div>
+          
+          <div class="card-actions">
+            <button class="edit-action" @click="editTransaction(getSelectedTransaction)">
+              ✏️ Edit
+            </button>
+            <button class="delete-action" @click="deleteTransaction(getSelectedTransaction.id)">
+              🗑️ Delete
+            </button>
+          </div>
+        </div>
       </div>
     </div>
   </div>
@@ -270,7 +338,9 @@ export default {
           description: 'Tabungan',
           category: 'cat4'
         }
-      ]
+      ],
+      pressTimer: null,
+      pressedTransaction: null,
     }
   },
   computed: {
@@ -279,6 +349,9 @@ export default {
     },
     transactions() {
       return this.mockTransactions
+    },
+    getSelectedTransaction() {
+      return this.transactions.find(t => t.id === this.selectedTransaction) || {}
     }
   },
   methods: {
@@ -376,6 +449,24 @@ export default {
     getCategoryName(categoryId) {
       const category = this.categories.find(c => c.id === categoryId);
       return category ? category.name : '';
+    },
+    startPress(transaction) {
+      this.pressTimer = setTimeout(() => {
+        this.showDeleteConfirmation(transaction);
+      }, 800); // 800ms untuk long press
+      this.pressedTransaction = transaction;
+    },
+    cancelPress() {
+      if (this.pressTimer) {
+        clearTimeout(this.pressTimer);
+        this.pressTimer = null;
+      }
+      this.pressedTransaction = null;
+    },
+    showDeleteConfirmation(transaction) {
+      if (confirm(`Apakah Anda yakin ingin menghapus transaksi ini?\n\nDetail:\nTanggal: ${this.formatDate(transaction.date)}\nJumlah: IDR ${this.formatNumber(transaction.amount)}\nDeskripsi: ${transaction.description}`)) {
+        this.deleteTransaction(transaction.id);
+      }
     }
   },
   async created() {
@@ -940,11 +1031,19 @@ export default {
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+  user-select: none; /* Mencegah seleksi teks saat long press */
+  touch-action: none; /* Mencegah gesture default di mobile */
 }
 
 .transaction-seat:hover {
   transform: translateY(-2px);
   box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+}
+
+.transaction-seat.pressed {
+  transform: scale(0.95);
+  opacity: 0.8;
+  background-color: #f5f5f5;
 }
 
 /* Responsive adjustments */
@@ -960,6 +1059,168 @@ export default {
   
   .transaction-seat {
     width: 100%;
+  }
+}
+
+.transaction-card-popup {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+}
+
+.card-content {
+  background: white;
+  width: 90%;
+  max-width: 400px;
+  border-radius: 16px;
+  box-shadow: 0 4px 24px rgba(0, 0, 0, 0.2);
+  animation: slideIn 0.3s ease;
+}
+
+.card-header {
+  padding: 20px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  border-bottom: 1px solid #eee;
+}
+
+.card-header h3 {
+  margin: 0;
+  color: #333;
+  font-size: 1.2rem;
+}
+
+.close-card {
+  background: none;
+  border: none;
+  font-size: 24px;
+  cursor: pointer;
+  color: #666;
+  padding: 0;
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  transition: all 0.2s;
+}
+
+.close-card:hover {
+  background: #f5f5f5;
+}
+
+.card-body {
+  padding: 20px;
+}
+
+.transaction-info {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.info-row {
+  display: flex;
+  gap: 15px;
+  align-items: flex-start;
+}
+
+.info-icon {
+  font-size: 24px;
+  width: 40px;
+  height: 40px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #f5f5f5;
+  border-radius: 12px;
+}
+
+.info-content {
+  flex: 1;
+}
+
+.info-label {
+  font-size: 0.9rem;
+  color: #666;
+  margin-bottom: 4px;
+}
+
+.info-value {
+  font-size: 1.1rem;
+  color: #333;
+}
+
+.info-value.amount {
+  font-weight: 600;
+  color: #2196F3;
+}
+
+.card-actions {
+  margin-top: 24px;
+  display: flex;
+  gap: 12px;
+}
+
+.edit-action,
+.delete-action {
+  flex: 1;
+  padding: 12px;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 1rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  transition: all 0.2s;
+}
+
+.edit-action {
+  background: #e3f2fd;
+  color: #1976D2;
+}
+
+.delete-action {
+  background: #ffebee;
+  color: #d32f2f;
+}
+
+.edit-action:hover {
+  background: #bbdefb;
+}
+
+.delete-action:hover {
+  background: #ffcdd2;
+}
+
+@keyframes slideIn {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes pressAnimation {
+  0% {
+    transform: scale(1);
+  }
+  100% {
+    transform: scale(0.95);
   }
 }
 </style> 
