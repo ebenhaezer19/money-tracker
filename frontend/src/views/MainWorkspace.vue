@@ -41,92 +41,56 @@
 
     <!-- Simple Table -->
     <div class="table-container">
-      <div class="category-grid">
-        <div v-for="category in visibleCategories" :key="category.id" class="category-row">
-          <!-- Category Header -->
+      <!-- Category Headers -->
+      <div class="category-headers">
+        <div class="category-row">
           <div 
-            class="category-header"
-            :style="{ borderLeft: `4px solid ${category.color}` }"
+            v-for="category in visibleCategories" 
+            :key="category.id" 
+            class="category-header-item"
+            :class="{ 'over-budget': isOverBudget(category.id) }"
+            :style="{
+              borderTop: `4px solid ${category.color}`,
+              background: `linear-gradient(to bottom, ${category.color}0A, white)`
+            }"
           >
-            <strong>{{ category.name }}</strong>
-            <button 
-              @click="openAddTransaction(category.id)" 
-              class="add-btn"
-              :style="{ backgroundColor: category.color }"
-            >
-              + Add
-            </button>
-          </div>
-          
-          <!-- Transaction Grid -->
-          <div class="transaction-grid">
-            <!-- Header Columns -->
-            <div class="grid-headers">
-              <div class="grid-header">Date</div>
-              <div class="grid-header">Amount</div>
-              <div class="grid-header">Description</div>
+            <!-- Category Header dengan Total -->
+            <div class="category-title" :style="{ borderBottom: `1px solid ${category.color}20` }">
+              <div class="category-info">
+                <h3 :style="{ color: category.color }">{{ category.name }}</h3>
+                <p class="total-amount" :style="{ color: isOverBudget(category.id) ? '#ef4444' : category.color }">
+                  Total: Rp {{ formatNumber(getTotalByCategory(category.id)) }}
+                </p>
+              </div>
+              <button 
+                @click="openAddTransaction(category.id)" 
+                class="add-btn"
+                :style="{ 
+                  background: `linear-gradient(45deg, ${category.color}, ${adjustColor(category.color, -20)})`,
+                  boxShadow: `0 4px 15px ${category.color}40`
+                }"
+              >
+                +
+              </button>
             </div>
-            
-            <!-- Transaction Columns -->
-            <div class="grid-columns">
-              <!-- Date Column -->
-              <div class="grid-column">
-                <div 
-                  v-for="transaction in getTransactionsByCategory(category.id)" 
-                  :key="transaction.id"
-                  class="transaction-seat"
-                  :class="{ 'pressed': pressedTransaction?.id === transaction.id }"
-                  :style="{ borderColor: category.color }"
-                  @click="togglePopup(transaction.id)"
-                  @mousedown="startPress(transaction)"
-                  @mouseup="cancelPress"
-                  @mouseleave="cancelPress"
-                  @touchstart.prevent="startPress(transaction)"
-                  @touchend.prevent="cancelPress"
-                  @touchcancel="cancelPress"
-                >
-                  {{ formatDate(transaction.date) }}
-                </div>
-              </div>
 
-              <!-- Amount Column -->
-              <div class="grid-column">
-                <div 
-                  v-for="transaction in getTransactionsByCategory(category.id)" 
-                  :key="transaction.id"
-                  class="transaction-seat"
-                  :class="{ 'pressed': pressedTransaction?.id === transaction.id }"
-                  :style="{ borderColor: category.color }"
-                  @click="togglePopup(transaction.id)"
-                  @mousedown="startPress(transaction)"
-                  @mouseup="cancelPress"
-                  @mouseleave="cancelPress"
-                  @touchstart.prevent="startPress(transaction)"
-                  @touchend.prevent="cancelPress"
-                  @touchcancel="cancelPress"
-                >
-                  IDR {{ formatNumber(transaction.amount) }}
-                </div>
-              </div>
-
-              <!-- Description Column -->
-              <div class="grid-column">
-                <div 
-                  v-for="transaction in getTransactionsByCategory(category.id)" 
-                  :key="transaction.id"
-                  class="transaction-seat"
-                  :class="{ 'pressed': pressedTransaction?.id === transaction.id }"
-                  :style="{ borderColor: category.color }"
-                  @click="togglePopup(transaction.id)"
-                  @mousedown="startPress(transaction)"
-                  @mouseup="cancelPress"
-                  @mouseleave="cancelPress"
-                  @touchstart.prevent="startPress(transaction)"
-                  @touchend.prevent="cancelPress"
-                  @touchcancel="cancelPress"
-                >
-                  {{ transaction.description }}
-                </div>
+            <!-- Transaction List -->
+            <div class="transaction-list">
+              <div 
+                v-for="transaction in getTransactionsByCategory(category.id)" 
+                :key="transaction.id"
+                class="transaction-item"
+                @click="togglePopup(transaction.id)"
+                @mousedown="startPress(transaction)"
+                @mouseup="cancelPress"
+                @mouseleave="cancelPress"
+                @touchstart.prevent="startPress(transaction)"
+                @touchend.prevent="cancelPress"
+                @touchcancel="cancelPress"
+              >
+                <div class="transaction-amount">Rp {{ formatNumber(transaction.amount) }}</div>
+                <div class="transaction-date">{{ formatDate(transaction.date) }}</div>
+                <div class="transaction-description">{{ transaction.description }}</div>
               </div>
             </div>
           </div>
@@ -280,67 +244,53 @@ export default {
           color: '#9C27B0'  // Purple
         }
       ],
+      pressTimer: null,
+      pressedTransaction: null,
       selectedTransaction: null,
       mockTransactions: [
         {
           id: 1,
-          date: '2024-03-01',
-          amount: 1500000,
-          description: 'Gaji Bulanan',
-          category: 'cat1'
+          category: 'cat1',
+          date: '2024-03-15',
+          amount: 500000,
+          description: 'Belanja bulanan'
         },
         {
           id: 2,
-          date: '2024-03-02',
-          amount: 500000,
-          description: 'Belanja Bulanan',
-          category: 'cat1'
+          category: 'cat1',
+          date: '2024-03-16',
+          amount: 750000,
+          description: 'Pembayaran listrik'
         },
         {
           id: 3,
-          date: '2024-03-03',
-          amount: 250000,
-          description: 'Makan di Restoran',
-          category: 'cat2'
+          category: 'cat2',
+          date: '2024-03-17',
+          amount: 1200000,
+          description: 'Biaya sekolah'
         },
         {
           id: 4,
-          date: '2024-03-04',
-          amount: 100000,
-          description: 'Transportasi',
-          category: 'cat2'
+          category: 'cat3',
+          date: '2024-03-18',
+          amount: 300000,
+          description: 'Makan malam'
         },
         {
           id: 5,
-          date: '2024-03-05',
-          amount: 300000,
-          description: 'Tagihan Internet',
-          category: 'cat3'
+          category: 'cat2',
+          date: '2024-03-19',
+          amount: 2500000,
+          description: 'Pembayaran kursus'
         },
         {
           id: 6,
-          date: '2024-03-06',
-          amount: 200000,
-          description: 'Tagihan Listrik',
-          category: 'cat3'
-        },
-        {
-          id: 7,
-          date: '2024-03-07',
-          amount: 1000000,
-          description: 'Investasi Saham',
-          category: 'cat4'
-        },
-        {
-          id: 8,
-          date: '2024-03-08',
-          amount: 750000,
-          description: 'Tabungan',
-          category: 'cat4'
+          category: 'cat4',
+          date: '2024-03-20',
+          amount: 1500000,
+          description: 'Service mobil'
         }
-      ],
-      pressTimer: null,
-      pressedTransaction: null,
+      ]
     }
   },
   computed: {
@@ -437,11 +387,8 @@ export default {
       this.editingTransaction = null
     },
     togglePopup(transactionId) {
-      if (this.selectedTransaction === transactionId) {
-        this.selectedTransaction = null;
-      } else {
-        this.selectedTransaction = transactionId;
-      }
+      const transaction = this.mockTransactions.find(t => t.id === transactionId)
+      this.selectedTransaction = transaction
     },
     closePopup() {
       this.selectedTransaction = null;
@@ -467,6 +414,20 @@ export default {
       if (confirm(`Apakah Anda yakin ingin menghapus transaksi ini?\n\nDetail:\nTanggal: ${this.formatDate(transaction.date)}\nJumlah: IDR ${this.formatNumber(transaction.amount)}\nDeskripsi: ${transaction.description}`)) {
         this.deleteTransaction(transaction.id);
       }
+    },
+    adjustColor(hex, percent) {
+      // Convert hex to RGB
+      let r = parseInt(hex.substring(1,3), 16);
+      let g = parseInt(hex.substring(3,5), 16);
+      let b = parseInt(hex.substring(5,7), 16);
+
+      // Adjust color
+      r = Math.max(0, Math.min(255, r + percent));
+      g = Math.max(0, Math.min(255, g + percent));
+      b = Math.max(0, Math.min(255, b + percent));
+
+      // Convert back to hex
+      return `#${((1 << 24) + (r << 16) + (g << 8) + b).toString(16).slice(1)}`;
     }
   },
   async created() {
@@ -481,8 +442,6 @@ export default {
       this.startDate = firstDay.toISOString().split('T')[0]
       this.endDate = today.toISOString().split('T')[0]
     }
-    
-    await this.fetchTransactions()
   }
 }
 </script>
@@ -490,55 +449,106 @@ export default {
 <style scoped>
 .workspace-container {
   padding: 1.5rem;
-  max-width: 1400px;
+  max-width: 1600px;
   margin: 0 auto;
+  width: 100%;
 }
 
 .top-bar {
   background: white;
-  padding: 1rem;
-  border-radius: 8px;
-  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-  margin-bottom: 1rem;
+  padding: 1.2rem;
+  border-radius: 12px;
+  box-shadow: 0 4px 20px rgba(0,0,0,0.08);
+  margin-bottom: 1.5rem;
   display: flex;
-  gap: 1rem;
+  gap: 1.5rem;
   flex-wrap: wrap;
+  align-items: center;
 }
 
 .date-range {
   display: flex;
   align-items: center;
-  gap: 0.5rem;
+  gap: 0.8rem;
+  padding: 0.5rem;
+  background: #f8f9fa;
+  border-radius: 8px;
 }
 
 .date-input {
-  padding: 0.5rem;
-  border: 1px solid #ddd;
-  border-radius: 4px;
+  padding: 0.6rem 1rem;
+  border: 1px solid #e2e8f0;
+  border-radius: 6px;
+  font-size: 0.95rem;
+  color: #2d3748;
+  transition: all 0.2s ease;
 }
 
-.attributes-filter {
+.date-input:focus {
+  border-color: #2196F3;
+  box-shadow: 0 0 0 3px rgba(33, 150, 243, 0.1);
+  outline: none;
+}
+
+.date-separator {
+  color: #64748b;
+  font-weight: 500;
+}
+
+.categories-filter {
   display: flex;
-  gap: 0.5rem;
+  gap: 0.8rem;
   flex-wrap: wrap;
   flex: 1;
 }
 
-.attribute-item {
+.category-item {
   display: flex;
   align-items: center;
-  gap: 0.25rem;
-  padding: 0.25rem 0.5rem;
-  border-radius: 4px;
+  gap: 0.6rem;
+  padding: 0.6rem 1rem;
+  border-radius: 8px;
+  background: #f8f9fa;
+  transition: all 0.2s ease;
+  cursor: pointer;
 }
 
-.add-transaction-btn {
-  background: #4CAF50;
-  color: white;
-  border: none;
-  padding: 0.5rem 1rem;
+.category-item:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+}
+
+.category-item input[type="checkbox"] {
+  width: 18px;
+  height: 18px;
   border-radius: 4px;
   cursor: pointer;
+}
+
+.category-item label {
+  font-size: 0.95rem;
+  color: #2d3748;
+  font-weight: 500;
+  cursor: pointer;
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+  .top-bar {
+    flex-direction: column;
+    gap: 1rem;
+    padding: 1rem;
+  }
+  
+  .date-range {
+    width: 100%;
+    justify-content: space-between;
+  }
+  
+  .categories-filter {
+    width: 100%;
+    justify-content: flex-start;
+  }
 }
 
 .table-container {
@@ -546,7 +556,7 @@ export default {
   border-radius: 8px;
   box-shadow: 0 2px 4px rgba(0,0,0,0.1);
   margin-top: 1rem;
-  overflow-x: auto;
+  width: 100%;
 }
 
 .excel-table {
@@ -1046,6 +1056,79 @@ export default {
   background-color: #f5f5f5;
 }
 
+@keyframes pressAnimation {
+  0% {
+    transform: scale(1);
+  }
+  100% {
+    transform: scale(0.95);
+  }
+}
+
+.popup-modal {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0,0,0,0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+}
+
+.popup-content {
+  background: white;
+  padding: 1.5rem;
+  border-radius: 8px;
+  min-width: 300px;
+  max-width: 400px;
+}
+
+.transaction-details {
+  margin: 1rem 0;
+}
+
+.popup-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.5rem;
+  margin-top: 1rem;
+}
+
+.edit-btn, .close-btn {
+  padding: 0.5rem 1rem;
+  border-radius: 4px;
+  border: none;
+  cursor: pointer;
+}
+
+.edit-btn {
+  background: #2196F3;
+  color: white;
+}
+
+.close-btn {
+  background: #f5f5f5;
+}
+
+.transaction-seat {
+  padding: 0.5rem;
+  border: 2px solid transparent;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  background: white;
+  margin: 0.25rem;
+  display: inline-block;
+}
+
+.transaction-seat:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
 /* Responsive adjustments */
 @media (max-width: 768px) {
   .grid-columns {
@@ -1215,12 +1298,170 @@ export default {
   }
 }
 
-@keyframes pressAnimation {
-  0% {
-    transform: scale(1);
-  }
-  100% {
-    transform: scale(0.95);
-  }
+.category-headers {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+  gap: 1.5rem;
+  padding: 1rem;
+  width: 100%;
+}
+
+.category-row {
+  display: contents;
+}
+
+.category-header-item {
+  background: white;
+  border-radius: 16px;
+  box-shadow: 0 4px 20px rgba(0,0,0,0.08);
+  overflow: hidden;
+  min-height: 300px;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  transition: all 0.3s ease;
+  border: 1px solid rgba(0,0,0,0.05);
+}
+
+.category-header-item:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 8px 30px rgba(0,0,0,0.12);
+}
+
+.category-title {
+  padding: 1.5rem;
+  background: rgba(255,255,255,0.9);
+  backdrop-filter: blur(8px);
+  position: relative;
+}
+
+.category-info {
+  padding-right: 3rem;
+}
+
+.add-btn {
+  width: 42px;
+  height: 42px;
+  border-radius: 12px;
+  border: none;
+  color: white;
+  font-size: 1.5rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  background: linear-gradient(45deg, #2196F3, #1976D2);
+  box-shadow: 0 4px 15px rgba(33, 150, 243, 0.3);
+  position: absolute;
+  top: 1rem;
+  right: 1rem;
+}
+
+.add-btn:hover {
+  transform: scale(1.1) rotate(90deg);
+  box-shadow: 0 6px 20px rgba(33, 150, 243, 0.4);
+}
+
+.total-amount {
+  margin: 0.7rem 0 0;
+  font-size: 1.2rem;
+  color: #2c3e50;
+  font-weight: 500;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.total-amount::before {
+  content: '💰';
+  font-size: 1.1rem;
+}
+
+.transaction-list {
+  flex: 1;
+  padding: 1.2rem;
+  overflow-y: auto;
+  background: rgba(248, 249, 250, 0.5);
+}
+
+.transaction-item {
+  padding: 1rem 1.2rem;
+  border-radius: 12px;
+  background: white;
+  margin-bottom: 1rem;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  border: 1px solid rgba(0,0,0,0.04);
+  box-shadow: 0 2px 8px rgba(0,0,0,0.04);
+}
+
+.transaction-item:hover {
+  transform: translateX(4px);
+  box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+  border-left: 4px solid #2196F3;
+}
+
+.transaction-amount {
+  font-size: 1.15rem;
+  font-weight: 600;
+  color: #1976D2;
+  margin-bottom: 0.6rem;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.transaction-date {
+  font-size: 0.9rem;
+  color: #64748b;
+  margin-bottom: 0.4rem;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.transaction-date::before {
+  content: '📅';
+  font-size: 0.9rem;
+}
+
+.transaction-description {
+  font-size: 0.95rem;
+  color: #475569;
+  line-height: 1.4;
+}
+
+/* Custom scrollbar untuk transaction list */
+.transaction-list::-webkit-scrollbar {
+  width: 6px;
+}
+
+.transaction-list::-webkit-scrollbar-track {
+  background: rgba(0,0,0,0.02);
+  border-radius: 3px;
+}
+
+.transaction-list::-webkit-scrollbar-thumb {
+  background: rgba(0,0,0,0.1);
+  border-radius: 3px;
+}
+
+.transaction-list::-webkit-scrollbar-thumb:hover {
+  background: rgba(0,0,0,0.2);
+}
+
+/* Style untuk kategori yang over budget */
+.category-header-item.over-budget {
+  background: linear-gradient(to bottom right, #fff5f5, #fff) !important;
+  border: 1px solid rgba(239, 68, 68, 0.2);
+}
+
+.over-budget .total-amount {
+  color: #ef4444 !important;
+}
+
+.over-budget .total-amount::before {
+  content: '⚠️';
 }
 </style> 

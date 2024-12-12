@@ -102,12 +102,14 @@ def login():
     """
     
     data = request.get_json()
+    print("Login attempt data:", data)  # Debug print
     
     username = data.get("username")
     password = data.get("password")
     
     # Incomplete request parameters
     if not username or not password:
+        print("Missing credentials - username:", username, "password:", "***")  # Debug print
         return (
             jsonify({
             "message": "Incomplete request parameters.",
@@ -116,12 +118,15 @@ def login():
     
     # Query the user by username
     user = User.query.filter_by(username=username).one_or_none()
+    print("User found:", bool(user))  # Debug print
     
     # Invalid username or password
     try:
         assert user  # invalid username
         assert bcrypt.check_password_hash(user.password, password)  # invalid password
+        print("Password check passed")  # Debug print
     except:
+        print("Authentication failed")  # Debug print
         return jsonify({"message": "Invalid username or password."}), 400
     
     # Login successful

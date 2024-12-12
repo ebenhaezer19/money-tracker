@@ -1,49 +1,26 @@
 import { defineStore } from 'pinia'
-import axios from 'axios'
 
-// Data dummy yang lebih lengkap
-const DUMMY_TRANSACTIONS = [
+// Demo transactions
+const DEMO_TRANSACTIONS = [
   {
     id: 1,
     date: '2024-01-15',
     amount: 150000,
-    category: 'Food',
-    payment: 'Cash',
-    status: 'Completed',
-    type: 'Expense',
-    description: 'Lunch'
+    category: 'cat1',
+    description: 'Category 1 - Transaksi pertama'
   },
-  {
-    id: 2,
-    date: '2024-01-20',
-    amount: 500000,
-    category: 'Transport',
-    payment: 'Transfer',
-    status: 'Completed',
-    type: 'Expense',
-    description: 'Gas & parking'
-  },
-  {
-    id: 3,
-    date: '2024-02-01',
-    amount: 2500000,
-    category: 'Salary',
-    payment: 'Transfer',
-    status: 'Completed',
-    type: 'Income',
-    description: 'January salary'
-  }
+  // ... sisanya tetap sama
 ]
 
 export const useTransactionStore = defineStore('transaction', {
   state: () => ({
-    transactions: []
+    transactions: DEMO_TRANSACTIONS
   }),
 
   actions: {
     async fetchTransactions({ startDate, endDate }) {
       // Filter berdasarkan tanggal
-      this.transactions = DUMMY_TRANSACTIONS.filter(transaction => {
+      this.transactions = DEMO_TRANSACTIONS.filter(transaction => {
         const transactionDate = new Date(transaction.date)
         const start = startDate ? new Date(startDate) : null
         const end = endDate ? new Date(endDate) : null

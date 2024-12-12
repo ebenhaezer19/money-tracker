@@ -1,7 +1,7 @@
 <template>
   <div class="login-container">
     <div class="login-card">
-      <img class="logo" src="https://moneytracker.domcloud.dev/logo.svg"></img>
+      <h2>Money Tracker</h2>
       <form @submit.prevent="handleLogin" class="login-form">
         <div class="form-group">
           <label for="username">Username</label>
@@ -60,9 +60,14 @@
 
 <script>
 import { useAuthStore } from '../stores/auth'
+import { useRouter } from 'vue-router'
 
 export default {
   name: 'LoginPage',
+  setup() {
+    const router = useRouter()
+    return { router }
+  },
   data() {
     return {
       username: '',
@@ -74,7 +79,7 @@ export default {
   },
   computed: {
     isValid() {
-      return this.username.length < 65 && this.username.length > 2 && this.password.length > 5
+      return this.username.length > 0 && this.password.length > 0
     }
   },
   methods: {
@@ -85,34 +90,31 @@ export default {
       try {
         const authStore = useAuthStore()
         await authStore.login(this.username, this.password)
-        this.$router.push('/workspace')
+        
+        this.router.push('/workspace')
       } catch (err) {
-        this.error = err.message || 'Login gagal. Silakan coba lagi.'
+        this.error = err.message
       } finally {
         this.isLoading = false
       }
+    }
+  },
+  async created() {
+    const authStore = useAuthStore()
+    if (authStore.isAuthenticated) {
+      this.router.push('/workspace')
     }
   }
 }
 </script>
 
 <style scoped>
-.logo {
-  display: block;
-  margin: 10px auto;
-  width: 200px;
-}
-
 .login-container {
   height: 100vh;
   display: flex;
   align-items: center;
   justify-content: center;
-
-  background-image: url('https://moneytracker.domcloud.dev/bg.svg');
-  background-size: cover;
-  background-position: center;
-  background-repeat: no-repeat;
+  background-color: #f5f5f5;
 }
 
 .login-card {
