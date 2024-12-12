@@ -199,6 +199,7 @@
 
 <script>
 import { useTransactionStore } from '../stores/transaction'
+import { useCategoryStore } from '../stores/category'
 
 export default {
   name: 'MainWorkspace',
@@ -347,10 +348,10 @@ export default {
       const transactionStore = useTransactionStore()
       try {
         if (this.editingTransaction) {
-          await transactionStore.updateTransaction({
-            ...this.formData,
-            id: this.editingTransaction.id
-          })
+          await transactionStore.updateTransaction(
+            this.editingTransaction.id,
+            this.formData
+          )
         } else {
           await transactionStore.addTransaction(this.formData)
         }
@@ -431,16 +432,28 @@ export default {
     }
   },
   async created() {
-    const savedColumns = localStorage.getItem('visibleColumns')
-    if (savedColumns) {
-      this.attributes = JSON.parse(savedColumns)
-    }
+    const transactionStore = useTransactionStore()
+    const categoryStore = useCategoryStore()
     
-    if (!this.startDate) {
-      const today = new Date()
-      const firstDay = new Date(today.getFullYear(), today.getMonth(), 1)
-      this.startDate = firstDay.toISOString().split('T')[0]
-      this.endDate = today.toISOString().split('T')[0]
+    try {
+      // Fetch categories
+      await categoryStore.fetchCategories()
+      
+      // Set default dates if not set
+      if (!this.startDate || !this.endDate) {
+        const today = new Date()
+        const firstDay = new Date(today.getFullYear(), today.getMonth(), 1)
+        this.startDate = firstDay.toISOString().split('T')[0]
+        this.endDate = today.toISOString().split('T')[0]
+      }
+      
+      // Fetch transactions
+      await transactionStore.fetchTransactions({
+        startDate: this.startDate,
+        endDate: this.endDate
+      })
+    } catch (error) {
+      console.error('Error initializing workspace:', error)
     }
   }
 }
@@ -448,22 +461,20 @@ export default {
 
 <style scoped>
 .workspace-container {
-  padding: 1.5rem;
-  max-width: 1600px;
+  padding: 2rem;
+  max-width: 1200px;
   margin: 0 auto;
-  width: 100%;
 }
 
 .top-bar {
-  background: white;
-  padding: 1.2rem;
-  border-radius: 12px;
-  box-shadow: 0 4px 20px rgba(0,0,0,0.08);
-  margin-bottom: 1.5rem;
   display: flex;
-  gap: 1.5rem;
-  flex-wrap: wrap;
   align-items: center;
+  gap: 2rem;
+  padding: 1.5rem;
+  background: white;
+  border-radius: 8px;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+  margin-bottom: 2rem;
 }
 
 .date-range {

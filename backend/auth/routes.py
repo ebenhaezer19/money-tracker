@@ -102,14 +102,14 @@ def login():
     """
     
     data = request.get_json()
-    print("Login attempt data:", data)  # Debug print
+    print("Login attempt data:", data)
     
     username = data.get("username")
     password = data.get("password")
     
     # Incomplete request parameters
     if not username or not password:
-        print("Missing credentials - username:", username, "password:", "***")  # Debug print
+        print("Missing credentials")
         return (
             jsonify({
             "message": "Incomplete request parameters.",
@@ -118,15 +118,15 @@ def login():
     
     # Query the user by username
     user = User.query.filter_by(username=username).one_or_none()
-    print("User found:", bool(user))  # Debug print
+    print("User found:", bool(user))
     
     # Invalid username or password
     try:
-        assert user  # invalid username
-        assert bcrypt.check_password_hash(user.password, password)  # invalid password
-        print("Password check passed")  # Debug print
+        assert user
+        assert bcrypt.check_password_hash(user.password, password)
+        print("Password check passed")
     except:
-        print("Authentication failed")  # Debug print
+        print("Authentication failed")
         return jsonify({"message": "Invalid username or password."}), 400
     
     # Login successful
@@ -135,10 +135,11 @@ def login():
         jsonify({
             "message": "Login successful.",
             "user": {
-                'id': user.id_user,
+                'id_user': user.id_user,
                 'username': user.username
-                }
-            }), 200
+            },
+            "token": user.id_user
+        }), 200
     )
     
     
@@ -149,3 +150,18 @@ def logout():
     return (
         jsonify({"message": "Logout successful."}), 200
     )
+
+
+@auth_bp.route("/check-auth", methods=["GET"])
+@login_required
+def check_auth():
+    """
+    Endpoint untuk mengecek status autentikasi
+    """
+    return jsonify({
+        "authenticated": True,
+        "user": {
+            "id": current_user.id_user,
+            "username": current_user.username
+        }
+    })

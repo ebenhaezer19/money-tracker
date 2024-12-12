@@ -1,6 +1,5 @@
 from flask_login import UserMixin
-
-from . import db
+from .extensions import db
 
 
 class User(db.Model, UserMixin):
@@ -20,7 +19,6 @@ class Category(db.Model):
     id_category = db.Column(db.String(64), primary_key=True)
     title = db.Column(db.String(64))
     user_id = db.Column(db.String(64), db.ForeignKey('User.id_user'))
-
     user = db.relationship("User", backref="categories")
 
 
@@ -33,5 +31,4 @@ class Transaction(db.Model):
     description = db.Column(db.String(128))
     is_cancelled = db.Column(db.Boolean, default=False)
     category_id = db.Column(db.String(64), db.ForeignKey('Category.id_category'))
-
     category = db.relationship("Category", backref="transactions")

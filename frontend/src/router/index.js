@@ -29,14 +29,18 @@ const router = createRouter({
 // Navigation guard
 router.beforeEach((to, from, next) => {
   const authStore = useAuthStore()
-  
-  if (to.meta.requiresAuth && !authStore.isAuthenticated) {
-    next('/login')
-  } else if (to.path === '/login' && authStore.isAuthenticated) {
-    next('/workspace')
-  } else {
-    next()
+  const publicPages = ['/login']
+  const authRequired = !publicPages.includes(to.path)
+
+  if (authRequired && !authStore.isAuthenticated) {
+    return next('/login')
   }
+
+  if (to.path === '/login' && authStore.isAuthenticated) {
+    return next('/workspace')
+  }
+
+  next()
 })
 
 export default router
