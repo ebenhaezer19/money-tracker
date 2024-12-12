@@ -1,7 +1,7 @@
 <template>
   <div class="login-container">
     <div class="login-card">
-      <h2>Money Tracker</h2>
+      <img class="logo" src="https://moneytracker.domcloud.dev/logo.svg"></img>
       <form @submit.prevent="handleLogin" class="login-form">
         <div class="form-group">
           <label for="username">Username</label>
@@ -74,7 +74,7 @@ export default {
   },
   computed: {
     isValid() {
-      return this.username.length > 0 && this.password.length > 0
+      return this.username.length < 65 && this.username.length > 2 && this.password.length > 5
     }
   },
   methods: {
@@ -97,12 +97,22 @@ export default {
 </script>
 
 <style scoped>
+.logo {
+  display: block;
+  margin: 10px auto;
+  width: 200px;
+}
+
 .login-container {
   height: 100vh;
   display: flex;
   align-items: center;
   justify-content: center;
-  background-color: #f5f5f5;
+
+  background-image: url('https://moneytracker.domcloud.dev/bg.svg');
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
 }
 
 .login-card {

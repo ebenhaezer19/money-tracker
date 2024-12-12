@@ -127,7 +127,13 @@ def login():
     # Login successful
     login_user(user)
     return (
-        jsonify({"message": "Login successful."}), 200
+        jsonify({
+            "message": "Login successful.",
+            "user": {
+                'id': user.id_user,
+                'username': user.username
+                }
+            }), 200
     )
     
     

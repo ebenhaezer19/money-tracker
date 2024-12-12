@@ -1,4 +1,5 @@
 import { defineStore } from 'pinia'
+import axios from 'axios'
 
 // Data dummy yang lebih lengkap
 const DUMMY_TRANSACTIONS = [
