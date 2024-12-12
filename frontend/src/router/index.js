@@ -39,12 +39,10 @@ router.beforeEach((to, from, next) => {
   const publicPages = ['/login']
   const authRequired = !publicPages.includes(to.path)
 
-  // Redirect ke login jika belum auth dan mencoba akses halaman yang butuh auth
   if (authRequired && !authStore.isAuthenticated) {
     return next('/login')
   }
 
-  // Redirect ke workspace jika sudah auth dan mencoba akses login
   if (to.path === '/login' && authStore.isAuthenticated) {
     return next('/workspace')
   }

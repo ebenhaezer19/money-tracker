@@ -88,9 +88,54 @@
               }"
             >
               <td></td>
-              <td>{{ formatDate(transaction.date) }}</td>
-              <td>IDR {{ formatNumber(transaction.amount) }}</td>
-              <td>{{ transaction.description }}</td>
+              <td>
+                <div 
+                  class="transaction-seat"
+                  :class="{ 'pressed': pressedTransaction?.id === transaction.id }"
+                  :style="{ borderColor: category.color }"
+                  @click="togglePopup(transaction.id)"
+                  @mousedown="startPress(transaction)"
+                  @mouseup="cancelPress"
+                  @mouseleave="cancelPress"
+                  @touchstart.prevent="startPress(transaction)"
+                  @touchend.prevent="cancelPress"
+                  @touchcancel="cancelPress"
+                >
+                  {{ formatDate(transaction.date) }}
+                </div>
+              </td>
+              <td>
+                <div 
+                  class="transaction-seat"
+                  :class="{ 'pressed': pressedTransaction?.id === transaction.id }"
+                  :style="{ borderColor: category.color }"
+                  @click="togglePopup(transaction.id)"
+                  @mousedown="startPress(transaction)"
+                  @mouseup="cancelPress"
+                  @mouseleave="cancelPress"
+                  @touchstart.prevent="startPress(transaction)"
+                  @touchend.prevent="cancelPress"
+                  @touchcancel="cancelPress"
+                >
+                  IDR {{ formatNumber(transaction.amount) }}
+                </div>
+              </td>
+              <td>
+                <div 
+                  class="transaction-seat"
+                  :class="{ 'pressed': pressedTransaction?.id === transaction.id }"
+                  :style="{ borderColor: category.color }"
+                  @click="togglePopup(transaction.id)"
+                  @mousedown="startPress(transaction)"
+                  @mouseup="cancelPress"
+                  @mouseleave="cancelPress"
+                  @touchstart.prevent="startPress(transaction)"
+                  @touchend.prevent="cancelPress"
+                  @touchcancel="cancelPress"
+                >
+                  {{ transaction.description }}
+                </div>
+              </td>
               <td>
                 <button @click.stop="deleteTransaction(transaction.id)" class="delete-btn">
                   🗑️
@@ -151,6 +196,22 @@
         </form>
       </div>
     </div>
+
+    <!-- Tambahkan popup modal untuk detail transaksi -->
+    <div v-if="selectedTransaction" class="popup-modal" @click.self="closePopup">
+      <div class="popup-content">
+        <h3>Detail Transaksi</h3>
+        <div class="transaction-details">
+          <p><strong>Tanggal:</strong> {{ formatDate(selectedTransaction.date) }}</p>
+          <p><strong>Jumlah:</strong> IDR {{ formatNumber(selectedTransaction.amount) }}</p>
+          <p><strong>Deskripsi:</strong> {{ selectedTransaction.description }}</p>
+        </div>
+        <div class="popup-actions">
+          <button @click="editTransaction(selectedTransaction)" class="edit-btn">Edit</button>
+          <button @click="closePopup" class="close-btn">Tutup</button>
+        </div>
+      </div>
+    </div>
   </div>
 </template>
 
@@ -200,6 +261,53 @@ export default {
           budget: 3000000,
           color: '#9C27B0'  // Purple
         }
+      ],
+      pressTimer: null,
+      pressedTransaction: null,
+      selectedTransaction: null,
+      mockTransactions: [
+        {
+          id: 1,
+          category: 'cat1',
+          date: '2024-03-15',
+          amount: 500000,
+          description: 'Belanja bulanan'
+        },
+        {
+          id: 2,
+          category: 'cat1',
+          date: '2024-03-16',
+          amount: 750000,
+          description: 'Pembayaran listrik'
+        },
+        {
+          id: 3,
+          category: 'cat2',
+          date: '2024-03-17',
+          amount: 1200000,
+          description: 'Biaya sekolah'
+        },
+        {
+          id: 4,
+          category: 'cat3',
+          date: '2024-03-18',
+          amount: 300000,
+          description: 'Makan malam'
+        },
+        {
+          id: 5,
+          category: 'cat2',
+          date: '2024-03-19',
+          amount: 2500000,
+          description: 'Pembayaran kursus'
+        },
+        {
+          id: 6,
+          category: 'cat4',
+          date: '2024-03-20',
+          amount: 1500000,
+          description: 'Service mobil'
+        }
       ]
     }
   },
@@ -208,8 +316,7 @@ export default {
       return this.categories.filter(cat => cat.isVisible)
     },
     transactions() {
-      const transactionStore = useTransactionStore()
-      return transactionStore.transactions
+      return this.mockTransactions
     }
   },
   methods: {
@@ -293,6 +400,34 @@ export default {
         category: ''
       }
       this.editingTransaction = null
+    },
+    startPress(transaction) {
+      this.pressTimer = setTimeout(() => {
+        this.showDeleteConfirmation(transaction);
+      }, 800); // 800ms untuk long press
+      this.pressedTransaction = transaction;
+    },
+
+    cancelPress() {
+      if (this.pressTimer) {
+        clearTimeout(this.pressTimer);
+        this.pressTimer = null;
+      }
+      this.pressedTransaction = null;
+    },
+
+    showDeleteConfirmation(transaction) {
+      if (confirm(`Apakah Anda yakin ingin menghapus transaksi ini?\n\nDetail:\nTanggal: ${this.formatDate(transaction.date)}\nJumlah: IDR ${this.formatNumber(transaction.amount)}\nDeskripsi: ${transaction.description}`)) {
+        this.deleteTransaction(transaction.id);
+      }
+    },
+    togglePopup(transactionId) {
+      const transaction = this.mockTransactions.find(t => t.id === transactionId)
+      this.selectedTransaction = transaction
+    },
+    
+    closePopup() {
+      this.selectedTransaction = null
     }
   },
   async created() {
@@ -307,8 +442,6 @@ export default {
       this.startDate = firstDay.toISOString().split('T')[0]
       this.endDate = today.toISOString().split('T')[0]
     }
-    
-    await this.fetchTransactions()
   }
 }
 </script>
@@ -612,5 +745,89 @@ export default {
 
 .transaction-row:hover {
   background: #f5f5f5;
+}
+
+.transaction-seat {
+  user-select: none; /* Mencegah seleksi teks saat long press */
+  touch-action: none; /* Mencegah gesture default di mobile */
+}
+
+.transaction-seat.pressed {
+  transform: scale(0.95);
+  opacity: 0.8;
+  background-color: #f5f5f5;
+}
+
+@keyframes pressAnimation {
+  0% {
+    transform: scale(1);
+  }
+  100% {
+    transform: scale(0.95);
+  }
+}
+
+.popup-modal {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0,0,0,0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+}
+
+.popup-content {
+  background: white;
+  padding: 1.5rem;
+  border-radius: 8px;
+  min-width: 300px;
+  max-width: 400px;
+}
+
+.transaction-details {
+  margin: 1rem 0;
+}
+
+.popup-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.5rem;
+  margin-top: 1rem;
+}
+
+.edit-btn, .close-btn {
+  padding: 0.5rem 1rem;
+  border-radius: 4px;
+  border: none;
+  cursor: pointer;
+}
+
+.edit-btn {
+  background: #2196F3;
+  color: white;
+}
+
+.close-btn {
+  background: #f5f5f5;
+}
+
+.transaction-seat {
+  padding: 0.5rem;
+  border: 2px solid transparent;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  background: white;
+  margin: 0.25rem;
+  display: inline-block;
+}
+
+.transaction-seat:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
 }
 </style> 
