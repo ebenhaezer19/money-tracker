@@ -548,19 +548,15 @@ export default {
     },
     formatDateTime(datetime) {
       if (!datetime) return '-'
-      try {
-        const date = new Date(datetime)
-        return date.toLocaleString('id-ID', {
-          year: 'numeric',
-          month: 'long',
-          day: 'numeric',
-          hour: '2-digit',
-          minute: '2-digit'
-        })
-      } catch (error) {
-        console.error('Error formatting datetime:', error)
-        return datetime || '-'
-      }
+      const date = new Date(datetime)
+      return new Intl.DateTimeFormat('id-ID', {
+        year: 'numeric',
+        month: 'long',
+        day: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit',
+        second: '2-digit'
+      }).format(date)
     },
     async updateCategoryColor(categoryId, newColor) {
       try {
@@ -1711,5 +1707,15 @@ export default {
 
 .over-budget .add-btn:hover {
   box-shadow: 0 6px 20px rgba(239, 68, 68, 0.4) !important;
+}
+
+.info-value.time {
+  font-size: 0.95rem;
+  color: #64748b;
+}
+
+.info-icon.time {
+  background: #f8fafc;
+  color: #64748b;
 }
 </style> 

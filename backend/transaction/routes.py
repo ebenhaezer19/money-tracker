@@ -67,7 +67,8 @@ def handle_transactions():
                 'amount': float(t.amount),
                 'date': t.timestamp.strftime('%Y-%m-%d'),
                 'description': t.description,
-                'category': t.category_id
+                'category': t.category_id,
+                'created_at': t.created_at.strftime('%Y-%m-%d %H:%M:%S') if t.created_at else None
             } for t in transactions]
 
             print(f"Found {len(result)} transactions")
@@ -108,7 +109,8 @@ def handle_transactions():
                 'amount': float(new_transaction.amount),
                 'date': new_transaction.timestamp.strftime('%Y-%m-%d'),
                 'description': new_transaction.description,
-                'category': new_transaction.category_id
+                'category': new_transaction.category_id,
+                'created_at': new_transaction.created_at.strftime('%Y-%m-%d %H:%M:%S')
             }), 201
             
         except Exception as e:
