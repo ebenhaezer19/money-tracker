@@ -1,6 +1,20 @@
 <template>
   <div class="workspace-container">
-    <!-- Top Bar with Filters -->
+    <!-- Statistics Section (Pindah ke atas) -->
+    <div class="statistics-section">
+      <!-- Total Overview -->
+      <div class="stat-card total-overview">
+        <h3>Total Pengeluaran</h3>
+        <div class="total-amount-large">
+          IDR {{ formatNumber(getTotalExpense) }}
+        </div>
+        <div class="stat-period">
+          {{ formatDate(startDate) }} - {{ formatDate(endDate) }}
+        </div>
+      </div>
+    </div>
+
+    <!-- Top Bar with Filters (Pindah ke tengah) -->
     <div class="top-bar">
       <div class="date-range">
         <input 
@@ -320,6 +334,7 @@
 import { useTransactionStore } from '../stores/transaction'
 import { useCategoryStore } from '../stores/category'
 import { useAuthStore } from '../stores/auth'
+import Chart from 'chart.js/auto'
 
 export default {
   name: 'MainWorkspace',
@@ -364,6 +379,8 @@ export default {
       },
       editingCategoryId: null,
       editCategoryName: '',
+      pieChart: null,
+      lineChart: null
     }
   },
   computed: {
@@ -372,6 +389,20 @@ export default {
     },
     getSelectedTransaction() {
       return this.transactions.find(t => t.id === this.selectedTransaction) || {}
+    },
+    getTotalExpense() {
+      return this.transactions.reduce((sum, t) => sum + Number(t.amount), 0)
+    },
+    getDailyExpenses() {
+      const dailyData = {}
+      this.transactions.forEach(t => {
+        const date = t.date
+        if (!dailyData[date]) {
+          dailyData[date] = 0
+        }
+        dailyData[date] += Number(t.amount)
+      })
+      return dailyData
     }
   },
   methods: {
@@ -415,9 +446,9 @@ export default {
         .reduce((sum, t) => sum + (Number(t.amount) || 0), 0)
     },
     isOverBudget(categoryId) {
-      const category = this.categories.find(c => c.id === categoryId)
       const total = this.getTotalByCategory(categoryId)
-      return total > category.budget
+      const BUDGET_LIMIT = 1000000 // 1 juta rupiah
+      return total > BUDGET_LIMIT
     },
     updateVisibleCategories() {
       localStorage.setItem('visibleCategories', JSON.stringify(this.categories))
@@ -756,6 +787,155 @@ export default {
       this.editingCategoryId = null
       this.editCategoryName = ''
     },
+    calculatePercentage(amount) {
+      const total = this.getTotalExpense
+      if (total === 0) return 0
+      return ((amount / total) * 100).toFixed(1)
+    },
+    initPieChart() {
+      const canvas = this.$refs.pieChartContainer
+      if (!canvas) return
+
+      if (this.pieChart) {
+        this.pieChart.destroy()
+      }
+
+      const data = this.visibleCategories
+        .map(cat => ({
+          value: this.getTotalByCategory(cat.id),
+          color: cat.color,
+          name: cat.name
+        }))
+        .filter(d => d.value > 0)
+
+      if (data.length === 0) return
+
+      this.pieChart = new Chart(canvas, {
+        type: 'doughnut',
+        data: {
+          labels: data.map(d => d.name),
+          datasets: [{
+            data: data.map(d => d.value),
+            backgroundColor: data.map(d => d.color),
+            borderWidth: 2,
+            borderColor: '#ffffff',
+            hoverOffset: 4
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          cutout: '60%',
+          plugins: {
+            legend: {
+              display: false
+            },
+            tooltip: {
+              callbacks: {
+                label: (context) => {
+                  const value = context.raw
+                  const total = context.dataset.data.reduce((a, b) => a + b, 0)
+                  const percentage = ((value / total) * 100).toFixed(1)
+                  return `${context.label}: IDR ${this.formatNumber(value)} (${percentage}%)`
+                }
+              }
+            }
+          }
+        }
+      })
+    },
+    initLineChart() {
+      this.$nextTick(() => {
+        const canvas = this.$refs.lineChartContainer
+        if (!canvas) {
+          console.error('Canvas element not found')
+          return
+        }
+
+        if (this.lineChart) {
+          this.lineChart.destroy()
+        }
+
+        const dailyData = this.getDailyExpenses
+        const dates = Object.keys(dailyData).sort()
+
+        if (dates.length === 0) {
+          console.log('No data to display')
+          return
+        }
+
+        try {
+          this.lineChart = new Chart(canvas, {
+            type: 'line',
+            data: {
+              labels: dates.map(d => this.formatDate(d)),
+              datasets: [{
+                label: 'Pengeluaran Harian',
+                data: dates.map(d => dailyData[d]),
+                borderColor: '#2196F3',
+                backgroundColor: '#2196F3',
+                tension: 0.4,
+                pointRadius: 4
+              }]
+            },
+            options: {
+              responsive: true,
+              maintainAspectRatio: false,
+              plugins: {
+                legend: {
+                  display: false
+                }
+              },
+              scales: {
+                y: {
+                  beginAtZero: true,
+                  ticks: {
+                    callback: value => `IDR ${this.formatNumber(value)}`
+                  }
+                }
+              }
+            }
+          })
+        } catch (error) {
+          console.error('Error creating line chart:', error)
+        }
+      })
+    },
+    updateCharts() {
+      this.$nextTick(() => {
+        if (this.$refs.pieChartContainer) {
+          this.initPieChart();
+        }
+        if (this.$refs.lineChartContainer) {
+          this.initLineChart();
+        }
+      });
+    }
+  },
+  watch: {
+    transactions: {
+      immediate: true,
+      handler(newTransactions) {
+        console.log('Transactions changed:', newTransactions)
+        if (newTransactions && newTransactions.length > 0) {
+          this.$nextTick(() => {
+            this.updateCharts()
+          })
+        }
+      },
+      deep: true
+    },
+    visibleCategories: {
+      handler() {
+        this.updateCharts();
+      },
+      deep: true
+    }
+  },
+  mounted() {
+    this.$nextTick(() => {
+      this.updateCharts();
+    });
   },
   async created() {
     const authStore = useAuthStore()
@@ -1995,5 +2175,100 @@ export default {
 
 .edit-category-input:focus {
   box-shadow: 0 0 0 3px rgba(0, 0, 0, 0.1);
+}
+
+.statistics-section {
+  margin-bottom: 1.5rem;
+  background: #f8fafc;
+  padding: 1rem;
+  border-radius: 12px;
+  background-image: 
+    radial-gradient(circle at 10px 10px, rgba(33, 150, 243, 0.05) 2px, transparent 0),
+    linear-gradient(to right, rgba(33, 150, 243, 0.03), rgba(33, 150, 243, 0.08));
+  background-size: 20px 20px, 100% 100%;
+}
+
+.stat-card {
+  background: white;
+  border-radius: 12px;
+  padding: 2rem;
+  box-shadow: 
+    0 2px 12px rgba(0,0,0,0.06),
+    inset 0 -2px 8px rgba(33, 150, 243, 0.1);
+  position: relative;
+  overflow: hidden;
+}
+
+.stat-card::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: 
+    linear-gradient(135deg, rgba(33, 150, 243, 0.1) 0%, transparent 100%),
+    repeating-linear-gradient(
+      45deg,
+      transparent,
+      transparent 10px,
+      rgba(33, 150, 243, 0.03) 10px,
+      rgba(33, 150, 243, 0.03) 20px
+    );
+  opacity: 0.5;
+  z-index: 0;
+}
+
+.total-overview {
+  text-align: center;
+  position: relative;
+  transition: transform 0.3s ease;
+}
+
+.total-overview:hover {
+  transform: translateY(-2px);
+}
+
+.total-amount-large {
+  font-size: 2.5rem;
+  font-weight: 700;
+  color: #2196F3;
+  margin: 1.5rem 0;
+  text-shadow: 2px 2px 4px rgba(33, 150, 243, 0.2);
+  position: relative;
+  z-index: 1;
+  animation: pulse 3s infinite ease-in-out;
+}
+
+.stat-period {
+  color: #64748b;
+  font-size: 0.9rem;
+  font-weight: 500;
+  position: relative;
+  z-index: 1;
+  padding: 0.5rem 1rem;
+  background: rgba(255, 255, 255, 0.8);
+  border-radius: 20px;
+  display: inline-block;
+  backdrop-filter: blur(4px);
+}
+
+h3 {
+  color: #1e293b;
+  font-weight: 600;
+  margin: 0;
+  position: relative;
+  z-index: 1;
+}
+
+/* Tambahkan animasi subtle */
+@keyframes pulse {
+  0% { transform: scale(1); }
+  50% { transform: scale(1.02); }
+  100% { transform: scale(1); }
+}
+
+.total-amount-large {
+  animation: pulse 3s infinite ease-in-out;
 }
 </style> 
