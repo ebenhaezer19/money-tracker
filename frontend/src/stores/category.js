@@ -45,6 +45,29 @@ export const useCategoryStore = defineStore('category', {
         console.error('Error updating category color:', error)
         throw error
       }
+    },
+
+    async addCategory(categoryData) {
+      try {
+        const response = await axios.post('/api/categories', categoryData)
+        
+        // Format data sesuai dengan yang diharapkan
+        const newCategory = {
+          ...response.data,
+          isVisible: true,
+          id: response.data.id,  // Pastikan id ada
+          name: response.data.name,  // Pastikan name ada
+          color: response.data.color  // Pastikan color ada
+        }
+        
+        // Update local state
+        this.categories.push(newCategory)
+        
+        return newCategory
+      } catch (error) {
+        console.error('Error adding category:', error)
+        throw error
+      }
     }
   }
 }) 

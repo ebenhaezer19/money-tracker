@@ -20,6 +20,12 @@
 
       <!-- Category Checkboxes -->
       <div class="categories-filter">
+        <div class="categories-header">
+          <h3>Categories</h3>
+          <button @click="showAddCategoryForm = true" class="add-category-btn">
+            + Add Category
+          </button>
+        </div>
         <div 
           v-for="category in categories" 
           :key="category.id"
@@ -241,6 +247,42 @@
         </div>
       </div>
     </div>
+
+    <!-- Modal form tambah kategori -->
+    <div v-if="showAddCategoryForm" class="modal-overlay">
+      <div class="modal-content">
+        <h2>Add New Category</h2>
+        <form @submit.prevent="saveCategory">
+          <div class="form-group">
+            <label>Category Name</label>
+            <input 
+              type="text" 
+              v-model="categoryForm.name"
+              required
+              placeholder="Enter category name"
+            >
+          </div>
+
+          <div class="form-group">
+            <label>Color</label>
+            <input 
+              type="color"
+              v-model="categoryForm.color"
+              class="color-input"
+            >
+          </div>
+
+          <div class="form-actions">
+            <button type="button" @click="showAddCategoryForm = false" class="cancel-btn">
+              Cancel
+            </button>
+            <button type="submit" class="save-btn">
+              Add Category
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
   </div>
 </template>
 
@@ -285,6 +327,11 @@ export default {
       pressedTransaction: null,
       selectedTransaction: null,
       transactions: [],
+      showAddCategoryForm: false,
+      categoryForm: {
+        name: '',
+        color: '#4CAF50'
+      }
     }
   },
   computed: {
@@ -574,6 +621,29 @@ export default {
         alert('Gagal mengubah warna kategori')
       }
     },
+    async saveCategory() {
+      try {
+        const categoryStore = useCategoryStore()
+        await categoryStore.addCategory(this.categoryForm)
+        
+        // Refresh categories
+        await categoryStore.fetchCategories()
+        
+        // Update local categories
+        this.categories = categoryStore.categories.map(cat => ({
+          ...cat,
+          isVisible: true
+        }))
+        
+        this.showAddCategoryForm = false
+        this.categoryForm = { name: '', color: '#4CAF50' }
+        
+        alert('Category added successfully!')
+      } catch (error) {
+        console.error('Error saving category:', error)
+        alert('Failed to add category')
+      }
+    }
   },
   async created() {
     const authStore = useAuthStore()
@@ -1718,5 +1788,32 @@ export default {
 .info-icon.time {
   background: #f8fafc;
   color: #64748b;
+}
+
+.categories-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 1rem;
+  padding: 0 1rem;
+}
+
+.add-category-btn {
+  padding: 0.5rem 1rem;
+  background: linear-gradient(45deg, #4CAF50, #45a049);
+  color: white;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 0.9rem;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  transition: all 0.2s;
+}
+
+.add-category-btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(76, 175, 80, 0.2);
 }
 </style> 

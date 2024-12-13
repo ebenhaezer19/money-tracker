@@ -12,27 +12,64 @@ transaction_bp = Blueprint('transaction', __name__)
 # Definisikan timezone Jakarta
 jakarta_tz = pytz.timezone('Asia/Jakarta')
 
-@transaction_bp.route('/categories', methods=['GET'])
+@transaction_bp.route('/categories', methods=['GET', 'POST'])
 @login_required
-def get_categories():
-    """Get all categories for current user"""
-    try:
-        # Get categories for current user
-        categories = Category.query.filter_by(user_id=current_user.id_user).all()
-        
-        if not categories:
-            return jsonify([]), 200
+def handle_categories():
+    if request.method == 'GET':
+        """Get all categories for current user"""
+        try:
+            categories = Category.query.filter_by(user_id=current_user.id_user).all()
             
-        return jsonify([{
-            'id': category.id_category,
-            'name': category.title,
-            'budget': 1000000,  # Default budget
-            'color': category.color  # Gunakan warna dari database
-        } for category in categories]), 200
-        
-    except Exception as e:
-        print(f"Error getting categories: {str(e)}")
-        return jsonify({'error': str(e)}), 500
+            if not categories:
+                return jsonify([]), 200
+                
+            return jsonify([{
+                'id': category.id_category,
+                'name': category.title,
+                'budget': 1000000,  # Default budget
+                'color': category.color
+            } for category in categories]), 200
+            
+        except Exception as e:
+            print(f"Error getting categories: {str(e)}")
+            return jsonify({'error': str(e)}), 500
+            
+    elif request.method == 'POST':
+        """Create new category"""
+        try:
+            data = request.get_json()
+            
+            # Validasi input
+            if not data.get('name'):
+                return jsonify({'error': 'Category name is required'}), 400
+                
+            # Generate random color jika tidak ada
+            if not data.get('color'):
+                colors = ['#4CAF50', '#2196F3', '#FFC107', '#9C27B0', '#F44336']
+                data['color'] = colors[len(Category.query.filter_by(user_id=current_user.id_user).all()) % len(colors)]
+            
+            # Buat kategori baru
+            new_category = Category(
+                id_category=generate_id(),
+                title=data['name'],
+                user_id=current_user.id_user,
+                color=data['color']
+            )
+            
+            db.session.add(new_category)
+            db.session.commit()
+            
+            return jsonify({
+                'id': new_category.id_category,
+                'name': new_category.title,
+                'budget': 1000000,  # Default budget
+                'color': new_category.color
+            }), 201
+            
+        except Exception as e:
+            db.session.rollback()
+            print(f"Error creating category: {str(e)}")
+            return jsonify({'error': str(e)}), 500
 
 @transaction_bp.route('/transactions', methods=['GET', 'POST'])
 @login_required
