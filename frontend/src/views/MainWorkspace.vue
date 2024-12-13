@@ -82,8 +82,8 @@
                   <input 
                     type="text"
                     v-model="editCategoryName"
-                    @keyup.enter="saveCategoryName(category.id)"
                     @blur="saveCategoryName(category.id)"
+                    @keyup.enter="saveCategoryName(category.id)"
                     @keyup.esc="cancelEditCategory"
                     ref="categoryNameInput"
                     class="edit-category-input"
@@ -363,7 +363,7 @@ export default {
         color: '#4CAF50'
       },
       editingCategoryId: null,
-      editCategoryName: ''
+      editCategoryName: '',
     }
   },
   computed: {
@@ -716,42 +716,46 @@ export default {
     startEditCategory(category) {
       this.editingCategoryId = category.id
       this.editCategoryName = category.name
-      // Focus input setelah render
       this.$nextTick(() => {
         if (this.$refs.categoryNameInput) {
           this.$refs.categoryNameInput.focus()
+          this.$refs.categoryNameInput.select()
         }
       })
     },
     async saveCategoryName(categoryId) {
-      if (!this.editCategoryName.trim()) {
-        this.cancelEditCategory()
-        return
-      }
-      
       try {
+        if (!this.editCategoryName.trim()) {
+          this.cancelEditCategory()
+          return
+        }
+
         const categoryStore = useCategoryStore()
         await categoryStore.updateCategory(categoryId, {
           name: this.editCategoryName.trim()
         })
-        
+
         // Update local category name
         const category = this.categories.find(c => c.id === categoryId)
         if (category) {
           category.name = this.editCategoryName.trim()
         }
-        
+
         this.editingCategoryId = null
         this.editCategoryName = ''
       } catch (error) {
         console.error('Error updating category name:', error)
-        alert('Failed to update category name')
+        // Kembalikan nama kategori ke nilai sebelumnya
+        const category = this.categories.find(c => c.id === categoryId)
+        if (category) {
+          category.name = category.name
+        }
       }
     },
     cancelEditCategory() {
       this.editingCategoryId = null
       this.editCategoryName = ''
-    }
+    },
   },
   async created() {
     const authStore = useAuthStore()
@@ -1962,19 +1966,20 @@ export default {
 }
 
 .category-name {
+  margin: 0;
   cursor: pointer;
+  transition: all 0.2s;
   padding: 0.2rem 0.5rem;
-  margin: -0.2rem -0.5rem;
   border-radius: 4px;
-  transition: background-color 0.2s;
 }
 
 .category-name:hover {
-  background: rgba(0,0,0,0.05);
+  background: rgba(0, 0, 0, 0.05);
 }
 
 .edit-category-name {
-  margin: -0.2rem 0;
+  margin: 0;
+  padding: 0;
 }
 
 .edit-category-input {
@@ -1983,13 +1988,12 @@ export default {
   padding: 0.2rem 0.5rem;
   border: 2px solid;
   border-radius: 4px;
-  width: 100%;
-  max-width: 200px;
+  width: 200px;
   outline: none;
   transition: all 0.2s;
 }
 
 .edit-category-input:focus {
-  box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+  box-shadow: 0 0 0 3px rgba(0, 0, 0, 0.1);
 }
 </style> 
