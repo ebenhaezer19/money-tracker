@@ -256,6 +256,12 @@ def update_category(category_id):
                 return jsonify({'error': 'Invalid color format'}), 400
             category.color = data['color']
             
+        if 'name' in data:
+            # Validasi nama kategori
+            if not data['name'].strip():
+                return jsonify({'error': 'Category name cannot be empty'}), 400
+            category.title = data['name'].strip()
+            
         db.session.commit()
         
         return jsonify({

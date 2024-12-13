@@ -82,6 +82,26 @@ export const useCategoryStore = defineStore('category', {
         console.error('Error deleting category:', error)
         throw error
       }
+    },
+
+    async updateCategory(categoryId, data) {
+      try {
+        const response = await axios.put(`/api/categories/${categoryId}`, data)
+        
+        // Update local state
+        const index = this.categories.findIndex(c => c.id === categoryId)
+        if (index !== -1) {
+          this.categories[index] = {
+            ...this.categories[index],
+            ...response.data
+          }
+        }
+        
+        return response.data
+      } catch (error) {
+        console.error('Error updating category:', error)
+        throw error
+      }
     }
   }
 }) 
