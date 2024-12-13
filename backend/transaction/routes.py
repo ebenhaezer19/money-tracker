@@ -41,25 +41,37 @@ def handle_transactions():
             end_date = request.args.get('date_end', 
                 datetime.now().strftime('%Y-%m-%d'))
 
+            print(f"Fetching transactions from {start_date} to {end_date}")
+
+            # Convert string dates to datetime objects for comparison
+            start_date = datetime.strptime(start_date, '%Y-%m-%d').date()
+            end_date = datetime.strptime(end_date, '%Y-%m-%d').date()
+            
+            # Add one day to end_date to include transactions on the end date
+            end_date = end_date + timedelta(days=1)
+
             # Query transactions
             transactions = Transaction.query\
                 .join(Category)\
                 .filter(
                     Category.user_id == current_user.id_user,
                     Transaction.timestamp >= start_date,
-                    Transaction.timestamp <= end_date,
+                    Transaction.timestamp < end_date,  # Changed to < end_date
                     Transaction.is_cancelled == False
                 )\
                 .order_by(Transaction.timestamp.desc())\
                 .all()
 
-            return jsonify([{
+            result = [{
                 'id': t.id_transaction,
                 'amount': float(t.amount),
                 'date': t.timestamp.strftime('%Y-%m-%d'),
                 'description': t.description,
                 'category': t.category_id
-            } for t in transactions]), 200
+            } for t in transactions]
+
+            print(f"Found {len(result)} transactions")
+            return jsonify(result), 200
 
         except Exception as e:
             print(f"Error getting transactions: {str(e)}")

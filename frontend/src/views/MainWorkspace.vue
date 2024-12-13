@@ -67,7 +67,7 @@
                 <p class="total-amount" :style="{ 
                   color: isOverBudget(category.id) ? '#ef4444' : category.color 
                 }">
-                  Total: Rp {{ formatNumber(getTotalByCategory(category.id)) }}
+                  Total: IDR {{ formatNumber(getTotalByCategory(category.id)) }}
                 </p>
               </div>
               <button 
@@ -97,7 +97,7 @@
                   }
                 }"
               >
-                <div class="transaction-amount">Rp {{ formatNumber(transaction.amount) }}</div>
+                <div class="transaction-amount">IDR {{ formatNumber(transaction.amount) }}</div>
                 <div class="transaction-date">{{ formatDate(transaction.date) }}</div>
                 <div class="transaction-description">{{ transaction.description }}</div>
               </div>
@@ -415,6 +415,18 @@ export default {
           console.log('New transaction added:', newTransaction)
         }
 
+        // Update date range if needed
+        const transactionDate = new Date(transactionData.date)
+        const startDate = new Date(this.startDate)
+        const endDate = new Date(this.endDate)
+        
+        if (transactionDate > endDate) {
+          this.endDate = transactionData.date
+        }
+        if (transactionDate < startDate) {
+          this.startDate = transactionData.date
+        }
+
         // Refresh data
         await this.fetchTransactions()
         
@@ -547,7 +559,6 @@ export default {
     const categoryStore = useCategoryStore()
     
     try {
-      // Inisialisasi auth
       if (!authStore.initAuth()) {
         console.log('No auth found, redirecting to login...')
         this.$router.push('/login')
@@ -556,13 +567,19 @@ export default {
 
       console.log('Initializing workspace...')
       
-      if (!this.startDate || !this.endDate) {
-        const today = new Date()
-        const firstDay = new Date(today.getFullYear(), today.getMonth(), 1)
-        this.startDate = firstDay.toISOString().split('T')[0]
-        this.endDate = today.toISOString().split('T')[0]
-      }
+      // Set default date range to current month
+      const today = new Date()
+      const lastDayOfMonth = new Date(today.getFullYear(), today.getMonth() + 1, 0)
       
+      if (!this.startDate || !this.endDate) {
+        // Set startDate to first day of current month
+        this.startDate = new Date(today.getFullYear(), today.getMonth(), 1)
+          .toISOString().split('T')[0]
+        
+        // Set endDate to last day of current month
+        this.endDate = lastDayOfMonth.toISOString().split('T')[0]
+      }
+
       console.log('Date range:', { startDate: this.startDate, endDate: this.endDate })
       
       // Fetch data
@@ -571,10 +588,9 @@ export default {
         this.fetchTransactions()
       ])
       
-      this.categories = categoryStore.categories.map((cat, index) => ({
+      this.categories = categoryStore.categories.map(cat => ({
         ...cat,
-        isVisible: true,
-        color: this.categoryColors[index % this.categoryColors.length] // Assign warna secara berurutan
+        isVisible: true
       }))
       
     } catch (error) {
