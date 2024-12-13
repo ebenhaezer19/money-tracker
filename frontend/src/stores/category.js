@@ -68,6 +68,20 @@ export const useCategoryStore = defineStore('category', {
         console.error('Error adding category:', error)
         throw error
       }
+    },
+
+    async deleteCategory(categoryId) {
+      try {
+        await axios.delete(`/api/categories/${categoryId}`)
+        
+        // Update local state
+        this.categories = this.categories.filter(c => c.id !== categoryId)
+        
+        return true
+      } catch (error) {
+        console.error('Error deleting category:', error)
+        throw error
+      }
     }
   }
 }) 

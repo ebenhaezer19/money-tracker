@@ -268,4 +268,31 @@ def update_category(category_id):
         db.session.rollback()
         print('Error updating category:', str(e))
         return jsonify({'error': 'Failed to update category'}), 500
+
+@transaction_bp.route('/categories/<category_id>', methods=['DELETE'])
+@login_required
+def delete_category(category_id):
+    try:
+        # Cari kategori
+        category = Category.query.filter_by(
+            id_category=category_id,
+            user_id=current_user.id_user
+        ).first()
+        
+        if not category:
+            return jsonify({'error': 'Category not found'}), 404
+            
+        # Hapus semua transaksi terkait
+        Transaction.query.filter_by(category_id=category_id).delete()
+        
+        # Hapus kategori
+        db.session.delete(category)
+        db.session.commit()
+        
+        return jsonify({'message': 'Category deleted successfully'})
+        
+    except Exception as e:
+        db.session.rollback()
+        print('Error deleting category:', str(e))
+        return jsonify({'error': 'Failed to delete category'}), 500
     

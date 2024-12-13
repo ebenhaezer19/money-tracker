@@ -21,7 +21,6 @@
       <!-- Category Checkboxes -->
       <div class="categories-filter">
         <div class="categories-header">
-          <h3>Categories</h3>
           <button @click="showAddCategoryForm = true" class="add-category-btn">
             + Add Category
           </button>
@@ -86,16 +85,29 @@
                   Total: IDR {{ formatNumber(getTotalByCategory(category.id)) }}
                 </p>
               </div>
-              <button 
-                @click="openAddTransaction(category.id)" 
-                class="add-btn"
-                :style="{ 
-                  background: `linear-gradient(45deg, ${category.color}, ${adjustColor(category.color, -20)})`,
-                  boxShadow: `0 4px 15px ${category.color}40`
-                }"
-              >
-                +
-              </button>
+              <div class="category-actions">
+                <button 
+                  @click="openAddTransaction(category.id)" 
+                  class="add-btn"
+                  :style="{ 
+                    background: `linear-gradient(45deg, ${category.color}, ${adjustColor(category.color, -20)})`,
+                    boxShadow: `0 4px 15px ${category.color}40`
+                  }"
+                >
+                  +
+                </button>
+                <button 
+                  @click.stop="confirmDeleteCategory(category.id)"
+                  class="delete-category-btn"
+                  :style="{
+                    background: '#fff',
+                    color: '#ef4444',
+                    border: '2px solid #ef4444'
+                  }"
+                >
+                  🗑️
+                </button>
+              </div>
             </div>
 
             <!-- Transaction List -->
@@ -642,6 +654,43 @@ export default {
       } catch (error) {
         console.error('Error saving category:', error)
         alert('Failed to add category')
+      }
+    },
+    async confirmDeleteCategory(categoryId) {
+      const category = this.categories.find(c => c.id === categoryId)
+      const transactions = this.getTransactionsByCategory(categoryId)
+      
+      if (transactions.length > 0) {
+        const confirm = window.confirm(
+          `Category "${category.name}" has ${transactions.length} transactions. ` +
+          'Deleting this category will also delete all associated transactions. ' +
+          'Are you sure you want to continue?'
+        )
+        if (!confirm) return
+      } else {
+        const confirm = window.confirm(
+          `Are you sure you want to delete category "${category.name}"?`
+        )
+        if (!confirm) return
+      }
+      
+      try {
+        const categoryStore = useCategoryStore()
+        await categoryStore.deleteCategory(categoryId)
+        
+        // Refresh data
+        await categoryStore.fetchCategories()
+        this.categories = categoryStore.categories.map(cat => ({
+          ...cat,
+          isVisible: true
+        }))
+        
+        // Refresh transactions karena mungkin ada yang terhapus
+        await this.fetchTransactions()
+        
+      } catch (error) {
+        console.error('Error deleting category:', error)
+        alert('Failed to delete category')
       }
     }
   },
@@ -1815,5 +1864,41 @@ export default {
 .add-category-btn:hover {
   transform: translateY(-2px);
   box-shadow: 0 4px 12px rgba(76, 175, 80, 0.2);
+}
+
+.category-actions {
+  position: absolute;
+  top: 1rem;
+  right: 1rem;
+  display: flex;
+  gap: 0.5rem;
+}
+
+.delete-category-btn {
+  width: 42px;
+  height: 42px;
+  border-radius: 12px;
+  border: none;
+  font-size: 1.2rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  background: white;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+}
+
+.delete-category-btn:hover {
+  transform: scale(1.1);
+  background: #fee2e2;
+  box-shadow: 0 4px 12px rgba(239, 68, 68, 0.2);
+}
+
+.category-title {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  padding-right: 7rem; /* Memberikan ruang untuk tombol */
 }
 </style> 
