@@ -1,12 +1,16 @@
 from datetime import datetime, timedelta
 from flask import Blueprint, jsonify, request
 from flask_login import current_user, login_required
+import pytz  # Tambahkan import ini
 
 from ..extensions import db
 from ..models import Transaction, Category
 from ..utils import generate_id
 
 transaction_bp = Blueprint('transaction', __name__)
+
+# Definisikan timezone Jakarta
+jakarta_tz = pytz.timezone('Asia/Jakarta')
 
 @transaction_bp.route('/categories', methods=['GET'])
 @login_required
@@ -68,7 +72,7 @@ def handle_transactions():
                 'date': t.timestamp.strftime('%Y-%m-%d'),
                 'description': t.description,
                 'category': t.category_id,
-                'created_at': t.created_at.strftime('%Y-%m-%d %H:%M:%S') if t.created_at else None
+                'created_at': t.created_at.astimezone(jakarta_tz).strftime('%Y-%m-%d %H:%M:%S') if t.created_at else None
             } for t in transactions]
 
             print(f"Found {len(result)} transactions")
@@ -100,6 +104,9 @@ def handle_transactions():
                 description=data.get('description', ''),
                 category_id=data['category']
             )
+            
+            # Set created_at dengan waktu Jakarta
+            new_transaction.created_at = datetime.now(jakarta_tz)
             
             db.session.add(new_transaction)
             db.session.commit()
