@@ -34,11 +34,6 @@
 
       <!-- Category Checkboxes -->
       <div class="categories-filter">
-        <div class="categories-header">
-          <button @click="showAddCategoryForm = true" class="add-category-btn">
-            + Add Category
-          </button>
-        </div>
         <div 
           v-for="category in categories" 
           :key="category.id"
@@ -76,6 +71,14 @@
     <div class="table-container">
       <!-- Category Headers -->
       <div class="category-headers">
+        <!-- Tambahkan header actions di sini -->
+        <div class="category-headers-actions">
+          <button @click="showAddCategoryForm = true" class="add-category-btn">
+            <span class="btn-icon">+</span>
+            <span class="btn-text">Add Category</span>
+          </button>
+        </div>
+
         <div class="category-row">
           <div 
             v-for="category in visibleCategories" 
@@ -2084,29 +2087,50 @@ export default {
 
 .categories-header {
   display: flex;
-  justify-content: space-between;
+  justify-content: flex-end;
   align-items: center;
-  margin-bottom: 1rem;
-  padding: 0 1rem;
+  margin: 1rem;
+  padding: 0.5rem;
+  background: rgba(255, 255, 255, 0.8);
+  border-radius: 12px;
+  backdrop-filter: blur(8px);
 }
 
 .add-category-btn {
-  padding: 0.5rem 1rem;
-  background: linear-gradient(45deg, #4CAF50, #45a049);
+  padding: 0.75rem 1.25rem;
+  background: linear-gradient(135deg, #4CAF50, #45a049);
   color: white;
   border: none;
-  border-radius: 8px;
+  border-radius: 12px;
   cursor: pointer;
-  font-size: 0.9rem;
+  font-size: 0.95rem;
+  font-weight: 600;
   display: flex;
   align-items: center;
   gap: 0.5rem;
-  transition: all 0.2s;
+  transition: all 0.3s ease;
+  box-shadow: 0 4px 15px rgba(76, 175, 80, 0.2);
+}
+
+.add-category-btn .btn-icon {
+  font-size: 1.2rem;
+  font-weight: 700;
+  line-height: 1;
+}
+
+.add-category-btn .btn-text {
+  letter-spacing: 0.5px;
 }
 
 .add-category-btn:hover {
   transform: translateY(-2px);
-  box-shadow: 0 4px 12px rgba(76, 175, 80, 0.2);
+  box-shadow: 0 6px 20px rgba(76, 175, 80, 0.3);
+  background: linear-gradient(135deg, #45a049, #388e3c);
+}
+
+.add-category-btn:active {
+  transform: translateY(0);
+  box-shadow: 0 2px 10px rgba(76, 175, 80, 0.2);
 }
 
 .category-actions {
@@ -2270,5 +2294,54 @@ h3 {
 
 .total-amount-large {
   animation: pulse 3s infinite ease-in-out;
+}
+
+.category-headers {
+  position: relative;
+  margin-bottom: 1rem;
+}
+
+.category-headers-actions {
+  position: absolute;
+  top: -3.5rem;  /* Sesuaikan jarak dari atas */
+  left: 1rem;
+  z-index: 10;
+}
+
+.add-category-btn {
+  padding: 0.75rem 1.25rem;
+  background: linear-gradient(135deg, #4CAF50, #45a049);
+  color: white;
+  border: none;
+  border-radius: 12px;
+  cursor: pointer;
+  font-size: 0.95rem;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  transition: all 0.3s ease;
+  box-shadow: 0 4px 15px rgba(76, 175, 80, 0.2);
+}
+
+.add-category-btn .btn-icon {
+  font-size: 1.2rem;
+  font-weight: 700;
+  line-height: 1;
+}
+
+.add-category-btn .btn-text {
+  letter-spacing: 0.5px;
+}
+
+.add-category-btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px rgba(76, 175, 80, 0.3);
+  background: linear-gradient(135deg, #45a049, #388e3c);
+}
+
+.add-category-btn:active {
+  transform: translateY(0);
+  box-shadow: 0 2px 10px rgba(76, 175, 80, 0.2);
 }
 </style> 
