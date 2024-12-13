@@ -41,6 +41,14 @@
           >
             {{ category.name }}
           </label>
+          <div class="color-picker">
+            <input 
+              type="color"
+              :value="category.color"
+              @change="updateCategoryColor(category.id, $event.target.value)"
+              class="color-input"
+            >
+          </div>
         </div>
       </div>
     </div>
@@ -57,7 +65,9 @@
             :class="{ 'over-budget': isOverBudget(category.id) }"
             :style="{
               borderTop: `4px solid ${category.color}`,
-              background: `linear-gradient(to bottom, ${category.color}0A, white)`
+              background: isOverBudget(category.id) 
+                ? 'linear-gradient(to bottom, #fff5f5, #fee2e2)' 
+                : `linear-gradient(to bottom, ${category.color}0A, white)`
             }"
           >
             <!-- Category Header dengan Total -->
@@ -552,6 +562,21 @@ export default {
         return datetime || '-'
       }
     },
+    async updateCategoryColor(categoryId, newColor) {
+      try {
+        const categoryStore = useCategoryStore()
+        await categoryStore.updateCategoryColor(categoryId, newColor)
+        
+        // Update local category color
+        const category = this.categories.find(c => c.id === categoryId)
+        if (category) {
+          category.color = newColor
+        }
+      } catch (error) {
+        console.error('Error updating category color:', error)
+        alert('Gagal mengubah warna kategori')
+      }
+    },
   },
   async created() {
     const authStore = useAuthStore()
@@ -668,6 +693,7 @@ export default {
   background: white;
   transition: all 0.2s ease;
   cursor: pointer;
+  position: relative;
 }
 
 .category-item:hover {
@@ -687,6 +713,49 @@ export default {
   color: #000000;
   font-weight: 500;
   cursor: pointer;
+}
+
+.color-picker {
+  margin-left: auto;
+  display: flex;
+  align-items: center;
+}
+
+.color-input {
+  width: 24px;
+  height: 24px;
+  padding: 0;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  background: none;
+}
+
+.color-input::-webkit-color-swatch-wrapper {
+  padding: 0;
+}
+
+.color-input::-webkit-color-swatch {
+  border: 2px solid #fff;
+  border-radius: 4px;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+/* Animasi hover untuk color picker */
+.color-input:hover {
+  transform: scale(1.1);
+}
+
+/* Styling untuk mobile */
+@media (max-width: 768px) {
+  .category-item {
+    padding: 0.5rem;
+  }
+  
+  .color-input {
+    width: 20px;
+    height: 20px;
+  }
 }
 
 /* Responsive adjustments */
@@ -1605,8 +1674,26 @@ export default {
 
 /* Style untuk kategori yang over budget */
 .category-header-item.over-budget {
-  background: linear-gradient(to bottom right, #fff5f5, #fff) !important;
-  border: 1px solid rgba(239, 68, 68, 0.2);
+  border: 1px solid rgba(239, 68, 68, 0.2) !important;
+  box-shadow: 0 4px 20px rgba(239, 68, 68, 0.15);
+}
+
+.over-budget .category-title {
+  background: rgba(254, 226, 226, 0.9);
+}
+
+.over-budget .transaction-list {
+  background: rgba(254, 242, 242, 0.5);
+}
+
+.over-budget .transaction-item {
+  background: rgba(255, 255, 255, 0.9);
+  border-color: #ef4444;
+}
+
+.over-budget .transaction-item:hover {
+  background: rgba(254, 226, 226, 0.2);
+  border-left: 4px solid #ef4444;
 }
 
 .over-budget .total-amount {
@@ -1615,5 +1702,14 @@ export default {
 
 .over-budget .total-amount::before {
   content: '⚠️';
+}
+
+.over-budget .add-btn {
+  background: linear-gradient(45deg, #ef4444, #dc2626) !important;
+  box-shadow: 0 4px 15px rgba(239, 68, 68, 0.3) !important;
+}
+
+.over-budget .add-btn:hover {
+  box-shadow: 0 6px 20px rgba(239, 68, 68, 0.4) !important;
 }
 </style> 

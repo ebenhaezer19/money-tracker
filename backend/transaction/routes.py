@@ -23,7 +23,7 @@ def get_categories():
             'id': category.id_category,
             'name': category.title,
             'budget': 1000000,  # Default budget
-            'color': get_category_color(category.id_category)
+            'color': category.color  # Gunakan warna dari database
         } for category in categories]), 200
         
     except Exception as e:
@@ -190,9 +190,36 @@ def delete_transaction(transaction_id):
         print('Error deleting transaction:', str(e))
         return jsonify({'error': 'Failed to delete transaction'}), 500
 
-def get_category_color(category_id):
-    """Get consistent color for category"""
-    colors = ['#4CAF50', '#2196F3', '#FFC107', '#9C27B0', '#F44336']
-    index = hash(category_id) % len(colors)
-    return colors[index]
+@transaction_bp.route('/categories/<category_id>', methods=['PUT'])
+@login_required
+def update_category(category_id):
+    try:
+        category = Category.query.filter_by(
+            id_category=category_id,
+            user_id=current_user.id_user
+        ).first()
+        
+        if not category:
+            return jsonify({'error': 'Category not found'}), 404
+            
+        data = request.get_json()
+        
+        if 'color' in data:
+            # Validasi format warna
+            if not data['color'].startswith('#') or len(data['color']) != 7:
+                return jsonify({'error': 'Invalid color format'}), 400
+            category.color = data['color']
+            
+        db.session.commit()
+        
+        return jsonify({
+            'id': category.id_category,
+            'name': category.title,
+            'color': category.color
+        })
+        
+    except Exception as e:
+        db.session.rollback()
+        print('Error updating category:', str(e))
+        return jsonify({'error': 'Failed to update category'}), 500
     
