@@ -200,6 +200,7 @@
 <script>
 import { useTransactionStore } from '../stores/transaction'
 import { useCategoryStore } from '../stores/category'
+import { useAuthStore } from '../stores/auth'
 
 export default {
   name: 'MainWorkspace',
@@ -210,7 +211,7 @@ export default {
       showAddForm: false,
       editingTransaction: null,
       formData: {
-        date: '',
+        date: new Date().toISOString().split('T')[0],
         amount: '',
         description: '',
         category: ''
@@ -248,58 +249,12 @@ export default {
       pressTimer: null,
       pressedTransaction: null,
       selectedTransaction: null,
-      mockTransactions: [
-        {
-          id: 1,
-          category: 'cat1',
-          date: '2024-03-15',
-          amount: 500000,
-          description: 'Belanja bulanan'
-        },
-        {
-          id: 2,
-          category: 'cat1',
-          date: '2024-03-16',
-          amount: 750000,
-          description: 'Pembayaran listrik'
-        },
-        {
-          id: 3,
-          category: 'cat2',
-          date: '2024-03-17',
-          amount: 1200000,
-          description: 'Biaya sekolah'
-        },
-        {
-          id: 4,
-          category: 'cat3',
-          date: '2024-03-18',
-          amount: 300000,
-          description: 'Makan malam'
-        },
-        {
-          id: 5,
-          category: 'cat2',
-          date: '2024-03-19',
-          amount: 2500000,
-          description: 'Pembayaran kursus'
-        },
-        {
-          id: 6,
-          category: 'cat4',
-          date: '2024-03-20',
-          amount: 1500000,
-          description: 'Service mobil'
-        }
-      ]
+      transactions: [],
     }
   },
   computed: {
     visibleCategories() {
       return this.categories.filter(cat => cat.isVisible)
-    },
-    transactions() {
-      return this.mockTransactions
     },
     getSelectedTransaction() {
       return this.transactions.find(t => t.id === this.selectedTransaction) || {}
@@ -313,7 +268,33 @@ export default {
       return new Date(date).toLocaleDateString('id-ID')
     },
     getTransactionsByCategory(categoryId) {
-      return this.transactions.filter(t => t.category === categoryId)
+      console.log('Getting transactions for category:', categoryId)
+      console.log('Current transactions state:', {
+        all: this.transactions,
+        length: this.transactions.length,
+        isArray: Array.isArray(this.transactions),
+        rawData: JSON.stringify(this.transactions)
+      })
+      
+      if (!Array.isArray(this.transactions)) {
+        console.warn('Transactions is not an array!')
+        return []
+      }
+      
+      const filtered = this.transactions.filter(t => {
+        const matches = t && t.category === categoryId
+        console.log('Checking transaction:', { 
+          transaction: t, 
+          categoryId, 
+          transactionCategory: t?.category,
+          matches,
+          comparison: `${t?.category} === ${categoryId}`
+        })
+        return matches
+      })
+      
+      console.log('Filtered transactions:', filtered)
+      return filtered
     },
     getTotalByCategory(categoryId) {
       return this.getTransactionsByCategory(categoryId)
@@ -327,8 +308,13 @@ export default {
     updateVisibleCategories() {
       localStorage.setItem('visibleCategories', JSON.stringify(this.categories))
     },
-    openAddTransaction(categoryId) {
-      this.formData.category = categoryId
+    async openAddTransaction(categoryId) {
+      this.formData = {
+        date: new Date().toISOString().split('T')[0],
+        amount: '',
+        description: '',
+        category: categoryId
+      }
       this.showAddForm = true
     },
     cancelTransaction() {
@@ -339,27 +325,87 @@ export default {
     },
     async fetchTransactions() {
       const transactionStore = useTransactionStore()
-      await transactionStore.fetchTransactions({
-        startDate: this.startDate,
-        endDate: this.endDate
-      })
+      try {
+        console.log('Fetching transactions with dates:', {
+          startDate: this.startDate,
+          endDate: this.endDate
+        })
+        
+        const response = await transactionStore.fetchTransactions({
+          startDate: this.startDate,
+          endDate: this.endDate
+        })
+        
+        console.log('Raw response from store:', response)
+        
+        if (response && Array.isArray(response)) {
+          this.transactions = [...response]
+          console.log('Transactions updated from array response')
+        } else if (response && response.data && Array.isArray(response.data)) {
+          this.transactions = [...response.data]
+          console.log('Transactions updated from response.data')
+        } else {
+          console.warn('Unexpected response format:', response)
+          this.transactions = []
+        }
+        
+        console.log('Updated local transactions:', {
+          transactions: this.transactions,
+          length: this.transactions.length,
+          sample: this.transactions[0]
+        })
+      } catch (error) {
+        console.error('Error fetching transactions:', error)
+        alert('Gagal mengambil data transaksi')
+      }
     },
     async saveTransaction() {
       const transactionStore = useTransactionStore()
       try {
+        if (!this.formData.date || !this.formData.amount || !this.formData.category) {
+          alert('Mohon isi tanggal, jumlah, dan kategori')
+          return
+        }
+
+        const transactionData = {
+          ...this.formData,
+          amount: Number(this.formData.amount),
+          date: this.formData.date
+        }
+
+        console.log('Saving transaction:', transactionData)
+
+        let newTransaction
         if (this.editingTransaction) {
-          await transactionStore.updateTransaction(
+          newTransaction = await transactionStore.updateTransaction(
             this.editingTransaction.id,
-            this.formData
+            transactionData
           )
         } else {
-          await transactionStore.addTransaction(this.formData)
+          newTransaction = await transactionStore.addTransaction(transactionData)
         }
+
+        console.log('New transaction saved:', newTransaction)
+
+        // Refresh data dan pastikan array transactions diupdate
+        await this.fetchTransactions()
+        
+        // Double check apakah transaksi baru ada dalam array
+        const transactionExists = this.transactions.some(t => t.id === newTransaction.id)
+        console.log('Transaction exists in array:', transactionExists)
+        
+        if (!transactionExists) {
+          console.log('Adding new transaction to array manually')
+          this.transactions = [newTransaction, ...this.transactions]
+        }
+        
         this.showAddForm = false
         this.resetForm()
-        await this.fetchTransactions()
+        
+        alert(this.editingTransaction ? 'Transaksi berhasil diperbarui' : 'Transaksi berhasil ditambahkan')
       } catch (error) {
         console.error('Error saving transaction:', error)
+        alert('Terjadi kesalahan saat menyimpan transaksi')
       }
     },
     async deleteTransaction(id) {
@@ -388,7 +434,7 @@ export default {
       this.editingTransaction = null
     },
     togglePopup(transactionId) {
-      const transaction = this.mockTransactions.find(t => t.id === transactionId)
+      const transaction = this.transactions.find(t => t.id === transactionId)
       this.selectedTransaction = transaction
     },
     closePopup() {
@@ -432,14 +478,20 @@ export default {
     }
   },
   async created() {
+    const authStore = useAuthStore()
     const transactionStore = useTransactionStore()
     const categoryStore = useCategoryStore()
     
     try {
-      // Fetch categories
-      await categoryStore.fetchCategories()
+      // Inisialisasi auth
+      if (!authStore.initAuth()) {
+        console.log('No auth found, redirecting to login...')
+        this.$router.push('/login')
+        return
+      }
+
+      console.log('Initializing workspace...')
       
-      // Set default dates if not set
       if (!this.startDate || !this.endDate) {
         const today = new Date()
         const firstDay = new Date(today.getFullYear(), today.getMonth(), 1)
@@ -447,13 +499,26 @@ export default {
         this.endDate = today.toISOString().split('T')[0]
       }
       
-      // Fetch transactions
-      await transactionStore.fetchTransactions({
-        startDate: this.startDate,
-        endDate: this.endDate
-      })
+      console.log('Date range:', { startDate: this.startDate, endDate: this.endDate })
+      
+      // Fetch data
+      await Promise.all([
+        categoryStore.fetchCategories(),
+        this.fetchTransactions()
+      ])
+      
+      this.categories = categoryStore.categories.map(cat => ({
+        ...cat,
+        isVisible: true
+      }))
+      
     } catch (error) {
       console.error('Error initializing workspace:', error)
+      if (error.response?.status === 401) {
+        authStore.logout()
+      } else {
+        alert('Terjadi kesalahan saat memuat data')
+      }
     }
   }
 }

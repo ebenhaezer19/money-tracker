@@ -1,5 +1,7 @@
 import { defineStore } from 'pinia'
-import axios from '../utils/axios'
+import axios from 'axios'
+
+const API_URL = import.meta.env.VITE_API_URL
 
 export const useAuthStore = defineStore('auth', {
   state: () => ({
@@ -9,26 +11,27 @@ export const useAuthStore = defineStore('auth', {
   }),
 
   getters: {
-    isAuthenticated: (state) => !!state.token && !!state.user
+    isAuthenticated: (state) => !!state.token && !!state.user,
+    getToken: (state) => state.token,
+    getAuthHeader() {
+      return {
+        headers: {
+          'Authorization': `Bearer ${this.token}`
+        }
+      }
+    }
   },
 
   actions: {
     async login(username, password) {
       try {
-        const response = await axios.post('/api/auth/login', {
+        const response = await axios.post(`${API_URL}/api/auth/login`, {
           username,
           password
         })
         
         if (response.data.token) {
-          this.token = response.data.token
-          this.user = response.data.user
-          this.authStatus = true
-          
-          localStorage.setItem('token', response.data.token)
-          localStorage.setItem('user', JSON.stringify(response.data.user))
-          localStorage.setItem('isAuthenticated', 'true')
-          
+          this.setAuth(response.data)
           return response.data
         }
         throw new Error('No token received')
@@ -38,13 +41,34 @@ export const useAuthStore = defineStore('auth', {
       }
     },
 
-    logout() {
-      this.user = null
+    setAuth(data) {
+      this.token = data.token
+      this.user = data.user
+      this.authStatus = true
+      
+      // Simpan di localStorage
+      localStorage.setItem('token', data.token)
+      localStorage.setItem('user', JSON.stringify(data.user))
+      
+      // Set token di axios default headers
+      axios.defaults.headers.common['Authorization'] = `Bearer ${data.token}`
+    },
+
+    clearAuth() {
       this.token = null
+      this.user = null
       this.authStatus = false
+      
       localStorage.removeItem('token')
       localStorage.removeItem('user')
-      localStorage.removeItem('isAuthenticated')
+      
+      // Hapus token dari axios headers
+      delete axios.defaults.headers.common['Authorization']
+    },
+
+    logout() {
+      this.clearAuth()
+      window.location.href = '/login'
     },
 
     initAuth() {
@@ -52,10 +76,13 @@ export const useAuthStore = defineStore('auth', {
       const user = localStorage.getItem('user')
       
       if (token && user) {
-        this.token = token
-        this.user = JSON.parse(user)
-        this.authStatus = true
+        this.setAuth({
+          token,
+          user: JSON.parse(user)
+        })
+        return true
       }
+      return false
     }
   }
 }) 
