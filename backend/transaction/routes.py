@@ -257,7 +257,7 @@ def update_category(category_id):
             category.color = data['color']
             
         if 'name' in data:
-            # Validasi nama kategori
+            # Validasi nama
             if not data['name'].strip():
                 return jsonify({'error': 'Category name cannot be empty'}), 400
             category.title = data['name'].strip()
