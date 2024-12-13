@@ -25,7 +25,8 @@
           :key="category.id"
           class="category-item"
           :style="{
-            borderLeft: `4px solid ${category.color}`
+            borderLeft: `4px solid ${category.color}`,
+            background: `${category.color}10`
           }"
         >
           <input 
@@ -34,7 +35,12 @@
             v-model="category.isVisible"
             @change="updateVisibleCategories"
           >
-          <label :for="category.id">{{ category.name }}</label>
+          <label 
+            :for="category.id"
+            style="color: #000000"
+          >
+            {{ category.name }}
+          </label>
         </div>
       </div>
     </div>
@@ -58,7 +64,9 @@
             <div class="category-title" :style="{ borderBottom: `1px solid ${category.color}20` }">
               <div class="category-info">
                 <h3 :style="{ color: category.color }">{{ category.name }}</h3>
-                <p class="total-amount" :style="{ color: isOverBudget(category.id) ? '#ef4444' : category.color }">
+                <p class="total-amount" :style="{ 
+                  color: isOverBudget(category.id) ? '#ef4444' : category.color 
+                }">
                   Total: Rp {{ formatNumber(getTotalByCategory(category.id)) }}
                 </p>
               </div>
@@ -81,12 +89,13 @@
                 :key="transaction.id"
                 class="transaction-item"
                 @click="togglePopup(transaction.id)"
-                @mousedown="startPress(transaction)"
-                @mouseup="cancelPress"
-                @mouseleave="cancelPress"
-                @touchstart.prevent="startPress(transaction)"
-                @touchend.prevent="cancelPress"
-                @touchcancel="cancelPress"
+                :style="{
+                  borderLeft: `4px solid ${category.color}`,
+                  '&:hover': {
+                    borderLeft: `6px solid ${category.color}`,
+                    background: `${category.color}05`
+                  }
+                }"
               >
                 <div class="transaction-amount">Rp {{ formatNumber(transaction.amount) }}</div>
                 <div class="transaction-date">{{ formatDate(transaction.date) }}</div>
@@ -167,10 +176,26 @@
             </div>
             
             <div class="info-row">
+              <div class="info-icon" 
+                   :style="{ background: getCategoryColor(getSelectedTransaction.category) + '20' }">
+                📂
+              </div>
+              <div class="info-content">
+                <div class="info-label">Category</div>
+                <div class="info-value category" 
+                     :style="{ color: getCategoryColor(getSelectedTransaction.category) }">
+                  {{ getCategoryName(getSelectedTransaction.category) }}
+                </div>
+              </div>
+            </div>
+            
+            <div class="info-row">
               <div class="info-icon">💰</div>
               <div class="info-content">
                 <div class="info-label">Amount</div>
-                <div class="info-value amount">IDR {{ formatNumber(getSelectedTransaction.amount) }}</div>
+                <div class="info-value amount">
+                  IDR {{ formatNumber(getSelectedTransaction.amount) }}
+                </div>
               </div>
             </div>
             
@@ -178,7 +203,19 @@
               <div class="info-icon">📝</div>
               <div class="info-content">
                 <div class="info-label">Description</div>
-                <div class="info-value">{{ getSelectedTransaction.description }}</div>
+                <div class="info-value description">
+                  {{ getSelectedTransaction.description || '-' }}
+                </div>
+              </div>
+            </div>
+
+            <div class="info-row">
+              <div class="info-icon">⏰</div>
+              <div class="info-content">
+                <div class="info-label">Created At</div>
+                <div class="info-value time">
+                  {{ getSelectedTransaction.created_at ? formatDateTime(getSelectedTransaction.created_at) : '-' }}
+                </div>
               </div>
             </div>
           </div>
@@ -216,35 +253,23 @@ export default {
         description: '',
         category: ''
       },
-      categories: [
-        { 
-          id: 'cat1', 
-          name: 'Category 1', 
-          isVisible: true,
-          budget: 1000000,
-          color: '#4CAF50'  // Green
-        },
-        { 
-          id: 'cat2', 
-          name: 'Category 2', 
-          isVisible: true,
-          budget: 2000000,
-          color: '#2196F3'  // Blue
-        },
-        { 
-          id: 'cat3', 
-          name: 'Category 3', 
-          isVisible: true,
-          budget: 1500000,
-          color: '#FFC107'  // Amber
-        },
-        { 
-          id: 'cat4', 
-          name: 'Category 4', 
-          isVisible: true,
-          budget: 3000000,
-          color: '#9C27B0'  // Purple
-        }
+      categories: [],
+      categoryColors: [
+        '#4CAF50',  // Green
+        '#2196F3',  // Blue
+        '#FFC107',  // Amber
+        '#9C27B0',  // Purple
+        '#F44336',  // Red
+        '#009688',  // Teal
+        '#FF9800',  // Orange
+        '#03A9F4',  // Light Blue
+        '#E91E63',  // Pink
+        '#8BC34A',  // Light Green
+        '#673AB7',  // Deep Purple
+        '#00BCD4',  // Cyan
+        '#FFEB3B',  // Yellow
+        '#795548',  // Brown
+        '#607D8B'   // Blue Grey
       ],
       pressTimer: null,
       pressedTransaction: null,
@@ -373,7 +398,10 @@ export default {
           date: this.formData.date
         }
 
-        console.log('Saving transaction:', transactionData)
+        console.log('Saving transaction:', {
+          isEdit: !!this.editingTransaction,
+          data: transactionData
+        })
 
         let newTransaction
         if (this.editingTransaction) {
@@ -381,23 +409,14 @@ export default {
             this.editingTransaction.id,
             transactionData
           )
+          console.log('Transaction updated:', newTransaction)
         } else {
           newTransaction = await transactionStore.addTransaction(transactionData)
+          console.log('New transaction added:', newTransaction)
         }
 
-        console.log('New transaction saved:', newTransaction)
-
-        // Refresh data dan pastikan array transactions diupdate
+        // Refresh data
         await this.fetchTransactions()
-        
-        // Double check apakah transaksi baru ada dalam array
-        const transactionExists = this.transactions.some(t => t.id === newTransaction.id)
-        console.log('Transaction exists in array:', transactionExists)
-        
-        if (!transactionExists) {
-          console.log('Adding new transaction to array manually')
-          this.transactions = [newTransaction, ...this.transactions]
-        }
         
         this.showAddForm = false
         this.resetForm()
@@ -413,20 +432,29 @@ export default {
         const transactionStore = useTransactionStore()
         try {
           await transactionStore.deleteTransaction(id)
-          await this.fetchTransactions()
+          this.closePopup()
+          await this.fetchTransactions() // Refresh data setelah menghapus
+          alert('Transaksi berhasil dihapus')
         } catch (error) {
           console.error('Error deleting transaction:', error)
+          alert('Gagal menghapus transaksi')
         }
       }
     },
     editTransaction(transaction) {
       this.editingTransaction = transaction
-      this.formData = { ...transaction }
+      this.formData = {
+        date: transaction.date,
+        amount: transaction.amount,
+        category: transaction.category,
+        description: transaction.description || ''
+      }
       this.showAddForm = true
+      this.closePopup() // Tutup popup detail setelah membuka form edit
     },
     resetForm() {
       this.formData = {
-        date: '',
+        date: new Date().toISOString().split('T')[0],
         amount: '',
         description: '',
         category: ''
@@ -434,15 +462,15 @@ export default {
       this.editingTransaction = null
     },
     togglePopup(transactionId) {
-      const transaction = this.transactions.find(t => t.id === transactionId)
-      this.selectedTransaction = transaction
+      this.selectedTransaction = transactionId
+      console.log('Selected transaction:', this.getSelectedTransaction)
     },
     closePopup() {
-      this.selectedTransaction = null;
+      this.selectedTransaction = null
     },
     getCategoryName(categoryId) {
-      const category = this.categories.find(c => c.id === categoryId);
-      return category ? category.name : '';
+      const category = this.categories.find(c => c.id === categoryId)
+      return category ? category.name : '-'
     },
     startPress(transaction) {
       this.pressTimer = setTimeout(() => {
@@ -475,7 +503,43 @@ export default {
 
       // Convert back to hex
       return `#${((1 << 24) + (r << 16) + (g << 8) + b).toString(16).slice(1)}`;
-    }
+    },
+    getCategoryColor(categoryId) {
+      const category = this.categories.find(c => c.id === categoryId)
+      return category?.color || this.getRandomColor()
+    },
+    getRandomColor() {
+      const index = Math.floor(Math.random() * this.categoryColors.length)
+      return this.categoryColors[index]
+    },
+    getContrastColor(hexcolor) {
+      // Convert hex to RGB
+      const r = parseInt(hexcolor.substring(1,3),16)
+      const g = parseInt(hexcolor.substring(3,5),16)
+      const b = parseInt(hexcolor.substring(5,7),16)
+      
+      // Calculate luminance
+      const luminance = (0.299 * r + 0.587 * g + 0.114 * b) / 255
+      
+      // Return black or white based on luminance
+      return luminance > 0.5 ? '#000000' : '#FFFFFF'
+    },
+    formatDateTime(datetime) {
+      if (!datetime) return '-'
+      try {
+        const date = new Date(datetime)
+        return date.toLocaleString('id-ID', {
+          year: 'numeric',
+          month: 'long',
+          day: 'numeric',
+          hour: '2-digit',
+          minute: '2-digit'
+        })
+      } catch (error) {
+        console.error('Error formatting datetime:', error)
+        return datetime || '-'
+      }
+    },
   },
   async created() {
     const authStore = useAuthStore()
@@ -507,9 +571,10 @@ export default {
         this.fetchTransactions()
       ])
       
-      this.categories = categoryStore.categories.map(cat => ({
+      this.categories = categoryStore.categories.map((cat, index) => ({
         ...cat,
-        isVisible: true
+        isVisible: true,
+        color: this.categoryColors[index % this.categoryColors.length] // Assign warna secara berurutan
       }))
       
     } catch (error) {
@@ -584,7 +649,7 @@ export default {
   gap: 0.6rem;
   padding: 0.6rem 1rem;
   border-radius: 8px;
-  background: #f8f9fa;
+  background: white;
   transition: all 0.2s ease;
   cursor: pointer;
 }
@@ -603,7 +668,7 @@ export default {
 
 .category-item label {
   font-size: 0.95rem;
-  color: #2d3748;
+  color: #000000;
   font-weight: 500;
   cursor: pointer;
 }
@@ -800,7 +865,7 @@ export default {
   padding: 0.5rem;
   padding-left: 1rem;
   border-radius: 4px;
-  background: #f5f5f5;
+  background: #000000;
   transition: all 0.3s ease;
 }
 
@@ -1281,20 +1346,14 @@ export default {
   padding: 20px;
 }
 
-.transaction-info {
-  display: flex;
-  flex-direction: column;
-  gap: 20px;
-}
-
 .info-row {
   display: flex;
   gap: 15px;
   align-items: flex-start;
+  margin-bottom: 15px;
 }
 
 .info-icon {
-  font-size: 24px;
   width: 40px;
   height: 40px;
   display: flex;
@@ -1302,6 +1361,7 @@ export default {
   justify-content: center;
   background: #f5f5f5;
   border-radius: 12px;
+  font-size: 20px;
 }
 
 .info-content {
@@ -1325,9 +1385,9 @@ export default {
 }
 
 .card-actions {
-  margin-top: 24px;
   display: flex;
   gap: 12px;
+  margin-top: 20px;
 }
 
 .edit-action,

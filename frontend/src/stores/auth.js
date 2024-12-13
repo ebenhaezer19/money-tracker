@@ -12,14 +12,7 @@ export const useAuthStore = defineStore('auth', {
 
   getters: {
     isAuthenticated: (state) => !!state.token && !!state.user,
-    getToken: (state) => state.token,
-    getAuthHeader() {
-      return {
-        headers: {
-          'Authorization': `Bearer ${this.token}`
-        }
-      }
-    }
+    getToken: (state) => state.token
   },
 
   actions: {
