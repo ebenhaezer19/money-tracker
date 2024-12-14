@@ -1,7 +1,7 @@
 <template>
   <div class="login-container">
     <div class="login-card">
-      <h2>Money Tracker</h2>
+      <img class="logo-login" alt="Money Tracker Logo" src="https://moneytracker.domcloud.dev/logo2.svg">
       <form @submit.prevent="handleLogin" class="login-form">
         <div class="form-group">
           <label for="username">Username</label>
@@ -50,8 +50,8 @@
 
         <div class="login-help">
           <p>Demo credentials:</p>
-          <p>Username: admin</p>
-          <p>Password: admin123</p>
+          <p>Username: aaaaaa</p>
+          <p>Password: aaaaaa</p>
         </div>
       </form>
     </div>
@@ -109,12 +109,23 @@ export default {
 </script>
 
 <style scoped>
+.logo-login {
+  display: block;
+  margin: 0 auto 1rem;
+  width: 50%;
+}
+
 .login-container {
   height: 100vh;
   display: flex;
   align-items: center;
   justify-content: center;
-  background-color: #f5f5f5;
+  
+  margin: 0;
+  background-image: url("https://moneytracker.domcloud.dev/bg.svg");
+  background-size: cover; /* Make the image cover the entire background */
+  background-repeat: no-repeat; /* Prevent tiling */
+  background-position: center; /* Center the image */
 }
 
 .login-card {

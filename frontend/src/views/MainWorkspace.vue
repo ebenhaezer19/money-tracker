@@ -450,7 +450,7 @@ export default {
     },
     isOverBudget(categoryId) {
       const total = this.getTotalByCategory(categoryId)
-      const BUDGET_LIMIT = 1000000 // 1 juta rupiah
+      const BUDGET_LIMIT = 999999 // 1 juta rupiah
       return total > BUDGET_LIMIT
     },
     updateVisibleCategories() {

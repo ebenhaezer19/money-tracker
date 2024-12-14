@@ -3,7 +3,7 @@
     <!-- Navbar will only show when user is logged in -->
     <nav v-if="isLoggedIn" class="navbar">
       <div class="nav-brand">
-        <h1>Money Tracker</h1>
+        <img class="logo" alt="Money Tracker Logo" src="https://moneytracker.domcloud.dev/logo2.svg">
       </div>
       <div class="nav-links">
         <button @click="handleLogout" class="logout-btn">Logout</button>
@@ -51,6 +51,11 @@ body {
 
 .app-container {
   min-height: 100vh;
+}
+
+.logo {
+  display: block;
+  height: 40px;
 }
 
 .navbar {
